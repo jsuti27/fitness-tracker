@@ -208,6 +208,21 @@ export function createProgramScreen({ store, onProgramChange }) {
       onProgramChange();
     });
 
+    $('prog-import-btn').addEventListener('click', () => {
+      const text = $('prog-import').value.trim();
+      if (!text) { flash('prog-import-note', 'Paste the program text first.', true); return; }
+      if (!confirm('Replace your split and exercise list with this program?\n\nYour logged sessions and macros are not touched.')) return;
+
+      const result = store.importProgram(text);
+      if (!result.ok) { flash('prog-import-note', result.error, true); return; }
+
+      $('prog-import').value = '';
+      programDay = null;
+      flash('prog-import-note', `Loaded ${result.days} training days ✓`);
+      renderProgram();
+      onProgramChange();
+    });
+
     $('workout-form').addEventListener('submit', e => {
       e.preventDefault();
       const v = $('t-workoutStart').value;

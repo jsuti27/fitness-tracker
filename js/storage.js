@@ -289,6 +289,32 @@ export function createStorage(backend) {
       backend.setItem(KEYS.syncError, msg || '');
     },
 
+    // Load a whole split + exercise list in one go. Deliberately narrower than
+    // importJSON: it touches ONLY the program and the day list, never your
+    // logged sessions, macros or targets. Handing someone a program should
+    // never be able to wipe their history.
+    importProgram(str) {
+      let data;
+      try {
+        data = JSON.parse(str);
+      } catch {
+        return { ok: false, error: 'That is not valid program text — copy the whole thing, including the { and }.' };
+      }
+      if (!data || typeof data !== 'object' || !data.program || typeof data.program !== 'object') {
+        return { ok: false, error: 'That text has no program in it — wrong thing pasted?' };
+      }
+
+      const days = Array.isArray(data.dayTypes) && data.dayTypes.length
+        ? data.dayTypes
+        : Object.keys(data.program);
+      if (!days.length) return { ok: false, error: 'That program has no training days in it.' };
+
+      // seedProgram fills in the stable ids and default increments.
+      this.saveProgram(seedProgram(data.program, days));
+      this.saveDayTypes(days);
+      return { ok: true, days: days.length };
+    },
+
     // --- Backup ---
     exportJSON() {
       return JSON.stringify(

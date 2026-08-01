@@ -267,6 +267,8 @@ button { cursor: pointer; font-family: inherit; }
 .add-day { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
 .add-day input { flex: 1; }
 .add-day button { min-height: 44px; }
+#prog-import { width: 100%; font: inherit; font-size: .82rem; padding: 11px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--well); color: var(--ink); resize: vertical; margin-bottom: 12px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+#prog-import:focus { outline: none; border-color: var(--brand); background: var(--card); }
 
 #sync-now { width: 100%; margin-top: 9px; }
 .sync-error { font-size: .78rem; color: var(--alert); background: var(--well); border-radius: 10px; padding: 9px 11px; margin-top: 8px; word-break: break-word; }
