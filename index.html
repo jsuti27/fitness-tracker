@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#12c16b" />
+  <title>Macros &amp; Gym</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1 id="screen-title">Today</h1>
+      <span id="today-date" class="subtle"></span>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ TODAY (macros) ============ -->
+    <section id="today" class="screen active">
+      <!-- Calories budget -->
+      <div class="card hero">
+        <div class="hero-top">
+          <span class="badge n-bg">🔥</span>
+          <span class="card-eyebrow">Calories today</span>
+        </div>
+        <div class="hero-value"><span id="cals-now">0</span><small> / <span id="cals-target">1800</span> kcal</small></div>
+        <div class="track"><div id="cals-bar" class="track-fill n-fill"></div></div>
+        <div id="cals-left" class="subtle"></div>
+      </div>
+
+      <!-- Macro tiles -->
+      <div class="card">
+        <div class="macros-eyebrow">Macros</div>
+        <div class="macro-tiles macro-tiles-4">
+          <div class="m-tile"><div class="chip-label">Protein</div><div class="chip-value"><span id="protein-now">0</span><small>/<span id="protein-target">180</span></small></div></div>
+          <div class="m-tile"><div class="chip-label">Carbs</div><div class="chip-value"><span id="carbs-now">0</span><small>/<span id="carbs-target">95</span></small></div></div>
+          <div class="m-tile"><div class="chip-label">Fats</div><div class="chip-value"><span id="fats-now">0</span><small>/<span id="fat-target">80</span></small></div></div>
+          <div class="m-tile"><div class="chip-label">Fibre</div><div class="chip-value"><span id="fibre-now">0</span><small>/<span id="fibre-target">25</span></small></div></div>
+        </div>
+      </div>
+
+      <!-- Log form -->
+      <form id="log-form" class="card">
+        <h2>Log today</h2>
+        <div class="field-row">
+          <label>Protein (g) <input type="number" step="0.1" id="in-protein" placeholder="0" /></label>
+          <label>Carbs (g) <input type="number" step="0.1" id="in-carbs" placeholder="0" /></label>
+          <label>Fats (g) <input type="number" step="0.1" id="in-fats" placeholder="0" /></label>
+          <label>Fibre (g) <input type="number" step="0.1" id="in-fibre" placeholder="0" /></label>
+        </div>
+        <label>Calories
+          <span class="cals-input">
+            <input type="number" step="0.1" id="in-calories" placeholder="0" />
+            <button type="button" id="calc-cals" class="ghost">Auto from macros</button>
+          </span>
+        </label>
+        <button type="submit" class="primary">Save today</button>
+        <p id="save-note" class="note"></p>
+      </form>
+
+      <!-- History -->
+      <div class="card"><div class="chart-head"><h2>Protein</h2><span class="subtle">last 14 days</span></div><div id="chart-protein" class="chart-wrap"></div></div>
+      <div class="card"><div class="chart-head"><h2>Calories</h2><span class="subtle">last 14 days</span></div><div id="chart-cals" class="chart-wrap"></div></div>
+    </section>
+
+    <!-- ============ TRAIN ============ -->
+    <section id="train" class="screen">
+      <div class="card training">
+        <div class="chart-head"><h2>Log a session</h2><span class="pill t-bg" id="train-week">Week —</span></div>
+        <div class="day-picker" id="day-picker">
+          <button type="button" class="day-btn" data-day="Push">Push</button>
+          <button type="button" class="day-btn" data-day="Pull">Pull</button>
+          <button type="button" class="day-btn" data-day="Legs">Legs</button>
+        </div>
+        <p id="session-status" class="note status"></p>
+        <div id="session-form"></div>
+      </div>
+
+      <div class="card">
+        <div class="chart-head"><h2>Weekly volume</h2><span class="subtle">kg lifted</span></div>
+        <div id="chart-volume" class="chart-wrap"></div>
+        <div class="legend">
+          <span><i class="dot dot-push"></i>Push</span>
+          <span><i class="dot dot-pull"></i>Pull</span>
+          <span><i class="dot dot-legs"></i>Legs</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Progression</h2>
+        <select id="prog-select" class="select"></select>
+        <div id="chart-prog" class="chart-wrap"></div>
+        <div id="prog-history" class="prog-history"></div>
+      </div>
+
+      <div class="card">
+        <h2>Recent sessions</h2>
+        <div id="recent-sessions"></div>
+      </div>
+    </section>
+
+    <!-- ============ PROGRAM ============ -->
+    <section id="program" class="screen">
+      <div class="card training">
+        <h2>Your program</h2>
+        <p class="subtle">Edits save as you type. Deleting a lift keeps every session you already logged with it.</p>
+        <div class="day-picker" id="prog-day-picker">
+          <button type="button" class="pday-btn" data-day="Push">Push</button>
+          <button type="button" class="pday-btn" data-day="Pull">Pull</button>
+          <button type="button" class="pday-btn" data-day="Legs">Legs</button>
+        </div>
+        <div id="program-list"></div>
+        <p id="program-note" class="note"></p>
+      </div>
+
+      <form id="add-exercise-form" class="card">
+        <h2>Add an exercise</h2>
+        <label>Name <input type="text" id="ax-name" placeholder="e.g. Cable Fly" /></label>
+        <div class="field-row">
+          <label>Sets <input type="number" id="ax-sets" inputmode="numeric" value="3" min="1" max="10" /></label>
+          <label>Rep range <input type="text" id="ax-range" placeholder="8-10" /></label>
+          <label>Increment (kg) <input type="number" id="ax-inc" inputmode="decimal" step="0.5" value="2.5" /></label>
+        </div>
+        <button type="submit" class="primary">Add to <span id="ax-day">Push</span></button>
+        <p id="add-note" class="note"></p>
+      </form>
+
+      <form id="workout-form" class="card">
+        <h2>Program start date</h2>
+        <label>Started <input type="date" id="t-workoutStart" /></label>
+        <p class="subtle">Drives the week number on the Train screen. Reset it when your coach gives you a new block.</p>
+        <button type="submit" class="primary">Save start date</button>
+        <p id="workout-note" class="note"></p>
+      </form>
+    </section>
+
+    <!-- ============ SETTINGS ============ -->
+    <section id="settings" class="screen">
+      <div class="card">
+        <h2>Appearance</h2>
+        <div class="theme-toggle">
+          <button type="button" class="theme-btn" data-theme="light">☀️ Light</button>
+          <button type="button" class="theme-btn" data-theme="dark">🌙 Dark</button>
+        </div>
+      </div>
+
+      <form id="targets-form" class="card">
+        <h2>Daily targets</h2>
+        <div class="field-row">
+          <label>Calories <input type="number" id="t-calories" /></label>
+          <label>Protein (g) <input type="number" id="t-protein" /></label>
+          <label>Carbs (g) <input type="number" id="t-carbs" /></label>
+          <label>Fat (g) <input type="number" id="t-fat" /></label>
+          <label>Fibre (g) <input type="number" id="t-fibre" /></label>
+        </div>
+        <button type="submit" class="primary">Save targets</button>
+        <p id="targets-note" class="note"></p>
+      </form>
+
+      <form id="sync-form" class="card">
+        <h2>Google Sheet sync</h2>
+        <p class="subtle">Sends every set to a Sheet in your Drive so you can review it on your computer. Set it up once — see <code>apps-script/README.md</code>.</p>
+        <label>Web app URL <input type="url" id="sync-url" placeholder="https://script.google.com/macros/s/…/exec" /></label>
+        <label>Secret <input type="text" id="sync-secret" placeholder="the SECRET you set in the script" /></label>
+        <button type="submit" class="primary">Save sync settings</button>
+        <button type="button" id="sync-now" class="ghost">Sync now</button>
+        <p id="sync-state" class="subtle"></p>
+        <p id="sync-note" class="note"></p>
+      </form>
+
+      <div class="card">
+        <h2>Backup</h2>
+        <p class="subtle">Your data lives only on this phone. Export every so often so you never lose it.</p>
+        <button type="button" id="export-btn" class="primary">Export data to file</button>
+        <label class="import-label">Import data from file
+          <input type="file" id="import-file" accept="application/json,.json" />
+        </label>
+        <p id="backup-note" class="note"></p>
+      </div>
+
+      <div class="card">
+        <h2 class="danger-text">Danger zone</h2>
+        <button type="button" id="reset-btn" class="danger">Erase all data</button>
+        <p id="reset-note" class="note"></p>
+      </div>
+
+      <p class="subtle center foot">Macros &amp; Gym v1.0 · on-device · steps &amp; weight live in Samsung Health</p>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab active" data-screen="today" data-title="Today"><span class="icn">🍽️</span><span>Macros</span></button>
+    <button class="tab" data-screen="train" data-title="Train"><span class="icn">🏋️</span><span>Train</span></button>
+    <button class="tab" data-screen="program" data-title="Program"><span class="icn">📋</span><span>Program</span></button>
+    <button class="tab" data-screen="settings" data-title="Settings"><span class="icn">⚙️</span><span>Settings</span></button>
+  </nav>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
