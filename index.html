@@ -71,11 +71,7 @@
     <section id="train" class="screen">
       <div class="card training">
         <div class="chart-head"><h2>Log a session</h2><span class="pill t-bg" id="train-week">Week —</span></div>
-        <div class="day-picker" id="day-picker">
-          <button type="button" class="day-btn" data-day="Push">Push</button>
-          <button type="button" class="day-btn" data-day="Pull">Pull</button>
-          <button type="button" class="day-btn" data-day="Legs">Legs</button>
-        </div>
+        <div class="day-picker" id="day-picker"></div>
         <p id="session-status" class="note status"></p>
         <div id="session-form"></div>
       </div>
@@ -83,11 +79,7 @@
       <div class="card">
         <div class="chart-head"><h2>Weekly volume</h2><span class="subtle">kg lifted</span></div>
         <div id="chart-volume" class="chart-wrap"></div>
-        <div class="legend">
-          <span><i class="dot dot-push"></i>Push</span>
-          <span><i class="dot dot-pull"></i>Pull</span>
-          <span><i class="dot dot-legs"></i>Legs</span>
-        </div>
+        <div class="legend" id="volume-legend"></div>
       </div>
 
       <div class="card">
@@ -108,13 +100,20 @@
       <div class="card training">
         <h2>Your program</h2>
         <p class="subtle">Edits save as you type. Deleting a lift keeps every session you already logged with it.</p>
-        <div class="day-picker" id="prog-day-picker">
-          <button type="button" class="pday-btn" data-day="Push">Push</button>
-          <button type="button" class="pday-btn" data-day="Pull">Pull</button>
-          <button type="button" class="pday-btn" data-day="Legs">Legs</button>
-        </div>
+        <div class="day-picker" id="prog-day-picker"></div>
         <div id="program-list"></div>
         <p id="program-note" class="note"></p>
+      </div>
+
+      <div class="card">
+        <h2>Your split</h2>
+        <p class="subtle">The training days themselves. Rename one and its logged sessions come with it; delete one and the history stays.</p>
+        <div id="daytype-list"></div>
+        <form id="add-day-form" class="add-day">
+          <input type="text" id="ad-name" placeholder="e.g. Upper A" aria-label="New day name" />
+          <button type="submit" class="ghost">Add day</button>
+        </form>
+        <p id="day-note" class="note"></p>
       </div>
 
       <form id="add-exercise-form" class="card">

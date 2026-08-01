@@ -6,20 +6,31 @@
 // history and charts still read correctly.
 
 import { parseRepRange, DEFAULT_INCREMENT } from './program.js';
-import { $, setText, flash, escapeAttr } from './dom.js';
+import { $, setText, flash, escapeAttr, escapeHtml } from './dom.js';
 
 export function createProgramScreen({ store, onProgramChange }) {
-  let programDay = 'Push';
+  let programDay = null;
 
   function renderProgram() {
-    const program = store.loadProgram();
-    const list = program[programDay] || [];
+    const days = store.loadDayTypes();
+    if (!days.includes(programDay)) programDay = days[0] || null;
 
-    document.querySelectorAll('.pday-btn').forEach(b =>
-      b.classList.toggle('active', b.dataset.day === programDay));
-    setText('ax-day', programDay);
+    renderDayTypes(days);
+
+    $('prog-day-picker').style.gridTemplateColumns = `repeat(${Math.min(days.length, 3)}, 1fr)`;
+    $('prog-day-picker').innerHTML = days.map(d =>
+      `<button type="button" class="pday-btn${d === programDay ? ' active' : ''}" data-day="${escapeAttr(d)}">${escapeHtml(d)}</button>`
+    ).join('');
+
+    setText('ax-day', programDay || '—');
     $('t-workoutStart').value = store.loadWorkoutStart();
 
+    if (!programDay) {
+      $('program-list').innerHTML = `<div class="empty">Add a training day above to get started.</div>`;
+      return;
+    }
+
+    const list = store.loadProgram()[programDay] || [];
     if (list.length === 0) {
       $('program-list').innerHTML = `<div class="empty">No ${programDay} exercises yet — add one below.</div>`;
       return;
@@ -41,12 +52,90 @@ export function createProgramScreen({ store, onProgramChange }) {
       </div>`).join('');
   }
 
-  function wireProgram() {
-    document.querySelectorAll('.pday-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        programDay = btn.dataset.day;
+  // The split itself — the list of training days.
+  function renderDayTypes(days) {
+    $('daytype-list').innerHTML = days.map((d, i) => `
+      <div class="daytype-row" data-day="${escapeAttr(d)}">
+        <input type="text" class="dt-name" value="${escapeAttr(d)}" aria-label="Day name" />
+        <span class="pe-actions">
+          <button type="button" class="pe-btn" data-move="-1" ${i === 0 ? 'disabled' : ''} title="Move up">▲</button>
+          <button type="button" class="pe-btn" data-move="1" ${i === days.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
+          <button type="button" class="pe-btn pe-del" title="Delete day">🗑</button>
+        </span>
+      </div>`).join('');
+  }
+
+  function wireDayTypes() {
+    const list = $('daytype-list');
+
+    list.addEventListener('change', e => {
+      if (!e.target.classList.contains('dt-name')) return;
+      const row = e.target.closest('.daytype-row');
+      const oldName = row.dataset.day;
+      const newName = e.target.value.trim();
+
+      if (!newName) { renderProgram(); return; }
+      if (newName === oldName) return;
+      if (store.loadDayTypes().includes(newName)) {
+        flash('day-note', `You already have a day called "${newName}".`, true);
         renderProgram();
-      });
+        return;
+      }
+
+      store.renameDayType(oldName, newName);
+      if (programDay === oldName) programDay = newName;
+      flash('day-note', `Renamed — sessions logged as "${oldName}" came with it ✓`);
+      renderProgram();
+      onProgramChange();
+    });
+
+    list.addEventListener('click', e => {
+      const btn = e.target.closest('button');
+      const row = e.target.closest('.daytype-row');
+      if (!btn || !row) return;
+      const name = row.dataset.day;
+
+      if (btn.dataset.move) {
+        store.moveDayType(name, Number(btn.dataset.move));
+      } else if (btn.classList.contains('pe-del')) {
+        if (store.loadDayTypes().length <= 1) {
+          flash('day-note', 'You need at least one training day.', true);
+          return;
+        }
+        if (!confirm(`Remove "${name}" from your split?\n\nIts exercise list goes, but every session you logged is kept.`)) return;
+        store.deleteDayType(name);
+      } else {
+        return;
+      }
+      renderProgram();
+      onProgramChange();
+    });
+
+    $('add-day-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const name = $('ad-name').value.trim();
+      if (!name) { flash('day-note', 'Give the day a name first.', true); return; }
+      if (store.loadDayTypes().includes(name)) {
+        flash('day-note', `You already have a day called "${name}".`, true);
+        return;
+      }
+      store.addDayType(name);
+      $('ad-name').value = '';
+      programDay = name;
+      flash('day-note', `Added "${name}" ✓`);
+      renderProgram();
+      onProgramChange();
+    });
+  }
+
+  function wireProgram() {
+    wireDayTypes();
+    // Delegated — the buttons are rebuilt whenever the split changes.
+    $('prog-day-picker').addEventListener('click', e => {
+      const btn = e.target.closest('.pday-btn');
+      if (!btn) return;
+      programDay = btn.dataset.day;
+      renderProgram();
     });
 
     const list = $('program-list');

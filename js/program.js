@@ -35,7 +35,14 @@ export const DEFAULT_PROGRAM = {
   ],
 };
 
-export const DAY_TYPES = ['Push', 'Pull', 'Legs'];
+// The day types a program is split into. Editable — a Push/Pull/Legs split and
+// an Upper/Lower split are the same shape, just different day names, so the app
+// should never dictate which one you run.
+export const DEFAULT_DAY_TYPES = ['Push', 'Pull', 'Legs'];
+
+// Kept as the seed default. Anything reading the *current* split must use
+// store.loadDayTypes() instead — this is only the starting point.
+export const DAY_TYPES = DEFAULT_DAY_TYPES;
 
 // Stable per-exercise id. History is keyed on this, so renaming an exercise
 // keeps its chart and its "last time" prefill.
@@ -54,9 +61,9 @@ export function parseRepRange(str) {
 
 // Fill in ids and increments. Used both to seed the defaults and to backfill
 // programs saved before those fields existed.
-export function seedProgram(source) {
+export function seedProgram(source, days = DEFAULT_DAY_TYPES) {
   const out = {};
-  for (const day of DAY_TYPES) {
+  for (const day of days) {
     out[day] = (source[day] || []).map(ex => ({
       id: ex.id || newExerciseId(),
       name: ex.name,
@@ -70,6 +77,6 @@ export function seedProgram(source) {
 
 // True when any exercise is missing a field seedProgram would add.
 export function programNeedsSeeding(program) {
-  return DAY_TYPES.some(day =>
+  return Object.keys(program || {}).some(day =>
     (program[day] || []).some(ex => !ex.id || ex.increment == null));
 }

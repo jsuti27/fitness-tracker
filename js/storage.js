@@ -3,7 +3,7 @@
 
 import {
   DEFAULT_PROGRAM, DEFAULT_WORKOUT_START, DEFAULT_INCREMENT,
-  newExerciseId, seedProgram, programNeedsSeeding,
+  newExerciseId, seedProgram, programNeedsSeeding, DEFAULT_DAY_TYPES,
 } from './program.js';
 
 export const DEFAULT_TARGETS = {
@@ -27,6 +27,7 @@ const KEYS = {
   syncQueue: 'ht.syncQueue',
   syncedAt: 'ht.syncedAt',
   syncError: 'ht.syncError',
+  dayTypes: 'ht.dayTypes',
 };
 
 // A session is identified by the day it was done and which day type it was.
@@ -123,6 +124,75 @@ export function createStorage(backend) {
       this.saveProgram(program);
       return program;
     },
+    // --- Day types (the split itself) ---
+    // Push/Pull/Legs and Upper/Lower are the same shape with different day
+    // names, so the split is data, not something the app hard-codes.
+    loadDayTypes() {
+      const raw = backend.getItem(KEYS.dayTypes);
+      if (raw) {
+        const days = JSON.parse(raw);
+        if (Array.isArray(days) && days.length) return days;
+      }
+      // Older installs have no day list — derive it from the program they have.
+      const stored = backend.getItem(KEYS.program);
+      if (stored) {
+        const keys = Object.keys(JSON.parse(stored));
+        if (keys.length) return keys;
+      }
+      return [...DEFAULT_DAY_TYPES];
+    },
+    saveDayTypes(days) {
+      backend.setItem(KEYS.dayTypes, JSON.stringify(days));
+    },
+    addDayType(name) {
+      const days = this.loadDayTypes();
+      if (days.includes(name)) return days;
+      days.push(name);
+      this.saveDayTypes(days);
+      const program = this.loadProgram();
+      program[name] = program[name] || [];
+      this.saveProgram(program);
+      return days;
+    },
+    // Renaming carries the exercises AND the logged sessions across, so a day
+    // you rename keeps its history rather than silently orphaning it.
+    renameDayType(oldName, newName) {
+      if (oldName === newName) return this.loadDayTypes();
+      const days = this.loadDayTypes();
+      const i = days.indexOf(oldName);
+      if (i < 0 || days.includes(newName)) return days;
+      days[i] = newName;
+      this.saveDayTypes(days);
+
+      const program = this.loadProgram();
+      program[newName] = program[oldName] || [];
+      delete program[oldName];
+      this.saveProgram(program);
+
+      this.saveSessions(this.loadSessions().map(s =>
+        s.day === oldName ? { ...s, day: newName } : s));
+      return days;
+    },
+    // Deleting drops the day and its exercise template, but keeps every logged
+    // session — the history stays readable in charts and the sheet.
+    deleteDayType(name) {
+      const days = this.loadDayTypes().filter(d => d !== name);
+      this.saveDayTypes(days);
+      const program = this.loadProgram();
+      delete program[name];
+      this.saveProgram(program);
+      return days;
+    },
+    moveDayType(name, delta) {
+      const days = this.loadDayTypes();
+      const i = days.indexOf(name);
+      const j = i + delta;
+      if (i < 0 || j < 0 || j >= days.length) return days;
+      [days[i], days[j]] = [days[j], days[i]];
+      this.saveDayTypes(days);
+      return days;
+    },
+
     loadWorkoutStart() {
       return backend.getItem(KEYS.workoutStart) || DEFAULT_WORKOUT_START;
     },
@@ -229,6 +299,7 @@ export function createStorage(backend) {
           days: this.loadDays(),
           program: this.loadProgram(),
           workoutStart: this.loadWorkoutStart(),
+          dayTypes: this.loadDayTypes(),
           sessions: this.loadSessions(),
           syncSettings: this.loadSyncSettings(),
         },
@@ -251,6 +322,7 @@ export function createStorage(backend) {
       // Workout data is optional (older v1 backups won't have it).
       if (data.program && typeof data.program === 'object') this.saveProgram(data.program);
       if (Array.isArray(data.sessions)) this.saveSessions(data.sessions);
+      if (Array.isArray(data.dayTypes) && data.dayTypes.length) this.saveDayTypes(data.dayTypes);
       if (typeof data.workoutStart === 'string') this.saveWorkoutStart(data.workoutStart);
       if (data.syncSettings && typeof data.syncSettings === 'object') {
         this.saveSyncSettings(data.syncSettings);

@@ -132,13 +132,19 @@ export function bestSet(sets) {
 }
 
 // Training volume (kg lifted) per program week, split by day type.
+// dayTypes drives the columns, so this works for any split — Push/Pull/Legs,
+// Upper/Lower, or anything else the user sets up.
 // Sessions with no week number are skipped — there is nowhere to put them.
-export function weeklyVolume(sessions) {
+export function weeklyVolume(sessions, dayTypes = ['Push', 'Pull', 'Legs']) {
+  const blank = () => Object.fromEntries(dayTypes.map(d => [d, 0]));
   const byWeek = new Map();
+
   for (const s of sessions || []) {
     if (typeof s.week !== 'number') continue;
-    if (!byWeek.has(s.week)) byWeek.set(s.week, { week: s.week, Push: 0, Pull: 0, Legs: 0 });
+    if (!byWeek.has(s.week)) byWeek.set(s.week, { week: s.week, ...blank() });
     const row = byWeek.get(s.week);
+    // A session logged under a day type that no longer exists still counts in
+    // history, but has no column to sit in here.
     if (!(s.day in row)) continue;
     for (const ex of s.exercises || []) {
       for (const set of ex.sets || []) {
@@ -148,14 +154,14 @@ export function weeklyVolume(sessions) {
       }
     }
   }
+
   return [...byWeek.values()]
     .sort((a, b) => a.week - b.week)
-    .map(r => ({
-      week: r.week,
-      Push: Math.round(r.Push),
-      Pull: Math.round(r.Pull),
-      Legs: Math.round(r.Legs),
-    }));
+    .map(r => {
+      const out = { week: r.week };
+      for (const d of dayTypes) out[d] = Math.round(r[d]);
+      return out;
+    });
 }
 
 // Progression history for one exercise across sessions, oldest -> newest.

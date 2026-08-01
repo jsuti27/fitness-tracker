@@ -106,8 +106,15 @@ function renderTrain() {
   const start = store.loadWorkoutStart();
   setText('train-week', `Week ${programWeek(start, todayStr)}`);
 
-  document.querySelectorAll('.day-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.day === selectedDay));
+  // The day buttons come from the stored split, so Push/Pull/Legs and
+  // Upper/Lower are both just data.
+  const days = store.loadDayTypes();
+  if (!days.includes(selectedDay)) selectedDay = days[0];
+
+  $('day-picker').style.gridTemplateColumns = `repeat(${Math.min(days.length, 3)}, 1fr)`;
+  $('day-picker').innerHTML = days.map(d =>
+    `<button type="button" class="day-btn${d === selectedDay ? ' active' : ''}" data-day="${escapeAttr(d)}">${escapeHtml(d)}</button>`
+  ).join('');
 
   renderSessionForm();
   renderVolumeChart();
@@ -250,12 +257,25 @@ function wireSessionForm() {
   });
 }
 
-function renderVolumeChart() {
+// One colour per day type, cycling if the split has more days than colours.
+function dayColors(days) {
   const C = chartColors();
-  $('chart-volume').innerHTML = groupedBarChartSVG(weeklyVolume(store.loadSessions()), {
-    colors: [C.training, C.nutrition, C.goal],
-    textColor: C.text,
-  });
+  const palette = [C.training, C.nutrition, C.goal, C.body || '#14b8c4', C.text];
+  return days.map((_, i) => palette[i % palette.length]);
+}
+
+function renderVolumeChart() {
+  const days = store.loadDayTypes();
+  const colors = dayColors(days);
+
+  $('chart-volume').innerHTML = groupedBarChartSVG(
+    weeklyVolume(store.loadSessions(), days),
+    { series: days, colors, textColor: chartColors().text }
+  );
+
+  $('volume-legend').innerHTML = days.map((d, i) =>
+    `<span><i class="dot" style="background:${colors[i]}"></i>${escapeHtml(d)}</span>`
+  ).join('');
 }
 
 function allExerciseNames() {
@@ -333,11 +353,12 @@ function renderRecentSessions() {
 }
 
 function wireTrain() {
-  document.querySelectorAll('.day-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      selectedDay = btn.dataset.day;
-      renderTrain();
-    });
+  // Delegated, because the day buttons are rebuilt whenever the split changes.
+  $('day-picker').addEventListener('click', e => {
+    const btn = e.target.closest('.day-btn');
+    if (!btn) return;
+    selectedDay = btn.dataset.day;
+    renderTrain();
   });
   wireSessionForm();
 }
