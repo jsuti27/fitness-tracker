@@ -6,20 +6,7 @@ import {
   newExerciseId, seedProgram, programNeedsSeeding, DEFAULT_DAY_TYPES,
 } from './program.js';
 
-export const DEFAULT_TARGETS = {
-  steps: 12000,
-  startWeight: 78,
-  goalWeight: 70,
-  calories: 1800,
-  protein: 180,
-  carbs: 95,
-  fat: 80,
-  fibre: 25,
-};
-
 const KEYS = {
-  targets: 'ht.targets',
-  days: 'ht.days',
   program: 'ht.program',
   sessions: 'ht.sessions',
   workoutStart: 'ht.workoutStart',
@@ -35,36 +22,6 @@ export const sessionKey = (date, day) => `${date}|${day}`;
 
 export function createStorage(backend) {
   return {
-    // --- Targets ---
-    loadTargets() {
-      const raw = backend.getItem(KEYS.targets);
-      return raw ? { ...DEFAULT_TARGETS, ...JSON.parse(raw) } : { ...DEFAULT_TARGETS };
-    },
-    saveTargets(t) {
-      backend.setItem(KEYS.targets, JSON.stringify(t));
-    },
-
-    // --- Daily log ---
-    loadDays() {
-      const raw = backend.getItem(KEYS.days);
-      const days = raw ? JSON.parse(raw) : [];
-      return days.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-    },
-    saveDays(days) {
-      backend.setItem(KEYS.days, JSON.stringify(days));
-    },
-    upsertDay(record) {
-      const days = this.loadDays();
-      const i = days.findIndex(d => d.date === record.date);
-      if (i >= 0) days[i] = { ...days[i], ...record };
-      else days.push(record);
-      this.saveDays(days);
-      return this.loadDays();
-    },
-    getDay(date) {
-      return this.loadDays().find(d => d.date === date);
-    },
-
     // --- Workout program (templates) ---
     // Seeds from the defaults on first use and writes the result back, so the
     // generated exercise ids are stable from then on. Also backfills programs
@@ -319,10 +276,8 @@ export function createStorage(backend) {
     exportJSON() {
       return JSON.stringify(
         {
-          version: 2,
+          version: 3,
           exportedAt: new Date().toISOString(),
-          targets: this.loadTargets(),
-          days: this.loadDays(),
           program: this.loadProgram(),
           workoutStart: this.loadWorkoutStart(),
           dayTypes: this.loadDayTypes(),
@@ -340,13 +295,13 @@ export function createStorage(backend) {
       } catch {
         return { ok: false, error: 'That file is not valid JSON.' };
       }
-      if (!data || typeof data !== 'object' || !Array.isArray(data.days) || typeof data.targets !== 'object') {
-        return { ok: false, error: 'That file is missing targets or days — wrong file?' };
+      if (!data || typeof data !== 'object' || !data.program || typeof data.program !== 'object') {
+        return { ok: false, error: 'That file has no training program in it — wrong file?' };
       }
-      this.saveTargets({ ...DEFAULT_TARGETS, ...data.targets });
-      this.saveDays(data.days);
-      // Workout data is optional (older v1 backups won't have it).
-      if (data.program && typeof data.program === 'object') this.saveProgram(data.program);
+      // Older backups also carry `targets` and `days` from when the app tracked
+      // macros. Those are ignored rather than rejected, so an old file still
+      // restores everything the app still uses.
+      this.saveProgram(data.program);
       if (Array.isArray(data.sessions)) this.saveSessions(data.sessions);
       if (Array.isArray(data.dayTypes) && data.dayTypes.length) this.saveDayTypes(data.dayTypes);
       if (typeof data.workoutStart === 'string') this.saveWorkoutStart(data.workoutStart);

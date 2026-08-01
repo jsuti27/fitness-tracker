@@ -50,23 +50,26 @@ export function sessionRows(session, program) {
   return rows;
 }
 
-export function createSync({ store, fetchImpl }) {
+export function createSync({ store, fetchImpl, pauseImpl }) {
   const doFetch = fetchImpl || (typeof fetch === 'function' ? fetch.bind(globalThis) : null);
+  // Injectable so tests don't actually wait.
+  const pause = pauseImpl || (ms => new Promise(r => setTimeout(r, ms)));
 
   async function sendSession(key, settings, program) {
     const [date, day] = key.split('|');
     const session = store.getSession(date, day);
 
-    // The session was deleted after being queued — nothing to send.
-    if (!session) return true;
-
-    const rows = sessionRows(session, program);
+    // The session was deleted after being queued. Tell the sheet to clear its
+    // rows rather than silently leaving them there — otherwise the sheet drifts
+    // away from the app and you can never trust it.
+    const rows = session ? sessionRows(session, program) : [];
+    const deleted = !session;
     const res = await doFetch(settings.url, {
       method: 'POST',
       // text/plain keeps this a "simple" request. Apps Script web apps do not
       // answer CORS preflights, so an application/json body would be blocked.
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ secret: settings.secret, key, rows }),
+      body: JSON.stringify({ secret: settings.secret, key, rows, deleted, date, day }),
     });
 
     if (!res) throw new Error('No response from the sheet');
@@ -114,8 +117,14 @@ export function createSync({ store, fetchImpl }) {
       let failed = 0;
       let lastError = '';
 
+      let first = true;
       for (const key of queue) {
         try {
+          // Apps Script throttles rapid successive writes to the same sheet,
+          // which showed up as some sessions failing on a multi-session sync.
+          // A short gap between sends avoids it.
+          if (!first) await pause(600);
+          first = false;
           await sendSession(key, settings, program);
           store.dequeueSync(key);
           sent += 1;

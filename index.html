@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#12c16b" />
-  <title>Macros &amp; Gym</title>
+  <title>Gym Log</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
@@ -13,64 +13,18 @@
 <body>
   <header class="app-header">
     <div>
-      <h1 id="screen-title">Today</h1>
+      <h1 id="screen-title">Train</h1>
       <span id="today-date" class="subtle"></span>
     </div>
   </header>
 
   <main>
-    <!-- ============ TODAY (macros) ============ -->
-    <section id="today" class="screen active">
-      <!-- Calories budget -->
-      <div class="card hero">
-        <div class="hero-top">
-          <span class="badge n-bg">🔥</span>
-          <span class="card-eyebrow">Calories today</span>
-        </div>
-        <div class="hero-value"><span id="cals-now">0</span><small> / <span id="cals-target">1800</span> kcal</small></div>
-        <div class="track"><div id="cals-bar" class="track-fill n-fill"></div></div>
-        <div id="cals-left" class="subtle"></div>
-      </div>
-
-      <!-- Macro tiles -->
-      <div class="card">
-        <div class="macros-eyebrow">Macros</div>
-        <div class="macro-tiles macro-tiles-4">
-          <div class="m-tile"><div class="chip-label">Protein</div><div class="chip-value"><span id="protein-now">0</span><small>/<span id="protein-target">180</span></small></div></div>
-          <div class="m-tile"><div class="chip-label">Carbs</div><div class="chip-value"><span id="carbs-now">0</span><small>/<span id="carbs-target">95</span></small></div></div>
-          <div class="m-tile"><div class="chip-label">Fats</div><div class="chip-value"><span id="fats-now">0</span><small>/<span id="fat-target">80</span></small></div></div>
-          <div class="m-tile"><div class="chip-label">Fibre</div><div class="chip-value"><span id="fibre-now">0</span><small>/<span id="fibre-target">25</span></small></div></div>
-        </div>
-      </div>
-
-      <!-- Log form -->
-      <form id="log-form" class="card">
-        <h2>Log today</h2>
-        <div class="field-row">
-          <label>Protein (g) <input type="number" step="0.1" id="in-protein" placeholder="0" /></label>
-          <label>Carbs (g) <input type="number" step="0.1" id="in-carbs" placeholder="0" /></label>
-          <label>Fats (g) <input type="number" step="0.1" id="in-fats" placeholder="0" /></label>
-          <label>Fibre (g) <input type="number" step="0.1" id="in-fibre" placeholder="0" /></label>
-        </div>
-        <label>Calories
-          <span class="cals-input">
-            <input type="number" step="0.1" id="in-calories" placeholder="0" />
-            <button type="button" id="calc-cals" class="ghost">Auto from macros</button>
-          </span>
-        </label>
-        <button type="submit" class="primary">Save today</button>
-        <p id="save-note" class="note"></p>
-      </form>
-
-      <!-- History -->
-      <div class="card"><div class="chart-head"><h2>Protein</h2><span class="subtle">last 14 days</span></div><div id="chart-protein" class="chart-wrap"></div></div>
-      <div class="card"><div class="chart-head"><h2>Calories</h2><span class="subtle">last 14 days</span></div><div id="chart-cals" class="chart-wrap"></div></div>
-    </section>
 
     <!-- ============ TRAIN ============ -->
-    <section id="train" class="screen">
+    <section id="train" class="screen active">
       <div class="card training">
         <div class="chart-head"><h2>Log a session</h2><span class="pill t-bg" id="train-week">Week —</span></div>
+        <label class="date-field">Date <input type="date" id="session-date" /></label>
         <div class="day-picker" id="day-picker"></div>
         <p id="session-status" class="note status"></p>
         <div id="session-form"></div>
@@ -155,19 +109,6 @@
         </div>
       </div>
 
-      <form id="targets-form" class="card">
-        <h2>Daily targets</h2>
-        <div class="field-row">
-          <label>Calories <input type="number" id="t-calories" /></label>
-          <label>Protein (g) <input type="number" id="t-protein" /></label>
-          <label>Carbs (g) <input type="number" id="t-carbs" /></label>
-          <label>Fat (g) <input type="number" id="t-fat" /></label>
-          <label>Fibre (g) <input type="number" id="t-fibre" /></label>
-        </div>
-        <button type="submit" class="primary">Save targets</button>
-        <p id="targets-note" class="note"></p>
-      </form>
-
       <form id="sync-form" class="card">
         <h2>Google Sheet sync</h2>
         <p class="subtle">Sends every set to a Sheet in your Drive so you can review it on your computer. Set it up once — see <code>apps-script/README.md</code>.</p>
@@ -196,13 +137,12 @@
         <p id="reset-note" class="note"></p>
       </div>
 
-      <p class="subtle center foot">Macros &amp; Gym · <span id="app-version">health-tracker-v10</span> · on-device</p>
+      <p class="subtle center foot">Gym Log · <span id="app-version">health-tracker-v11</span> · on-device</p>
     </section>
   </main>
 
   <nav class="tabbar">
-    <button class="tab active" data-screen="today" data-title="Today"><span class="icn">🍽️</span><span>Macros</span></button>
-    <button class="tab" data-screen="train" data-title="Train"><span class="icn">🏋️</span><span>Train</span></button>
+    <button class="tab active" data-screen="train" data-title="Train"><span class="icn">🏋️</span><span>Train</span></button>
     <button class="tab" data-screen="program" data-title="Program"><span class="icn">📋</span><span>Program</span></button>
     <button class="tab" data-screen="settings" data-title="Settings"><span class="icn">⚙️</span><span>Settings</span></button>
   </nav>

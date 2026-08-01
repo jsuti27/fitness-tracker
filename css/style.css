@@ -239,6 +239,8 @@ button { cursor: pointer; font-family: inherit; }
 .ex-note.hidden { display: none; }
 
 .status { min-height: 1.1em; margin: 0 0 10px; }
+.date-field { margin-bottom: 14px; }
+.last-when { color: var(--muted); font-size: .74rem; margin-left: auto; }
 
 .legend { display: flex; gap: 15px; justify-content: center; font-size: .76rem; color: var(--muted); font-weight: 600; margin-top: 4px; }
 .legend span { display: flex; align-items: center; gap: 5px; }

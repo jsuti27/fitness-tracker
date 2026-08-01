@@ -30,6 +30,23 @@ function doPost(e) {
     var appended = 0;
     var updated = 0;
 
+    // The session was deleted in the app — clear its rows so the sheet stays
+    // in step. Deleting bottom-up keeps the remaining row numbers valid.
+    if (payload.deleted && payload.date && payload.day) {
+      var toDelete = [];
+      for (var key in index) {
+        var parts = key.split('|');
+        if (parts[0] === String(payload.date) && parts[1] === String(payload.day)) {
+          toDelete.push(index[key]);
+        }
+      }
+      toDelete.sort(function (a, b) { return b - a; });
+      for (var d = 0; d < toDelete.length; d++) {
+        sheet.deleteRow(toDelete[d]);
+      }
+      return json({ ok: true, deleted: toDelete.length });
+    }
+
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
       var values = [r.date, r.week, r.day, r.exercise, r.set, r.kg, r.reps, r.inRange, r.note];

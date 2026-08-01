@@ -1,10 +1,10 @@
 import { createStorage } from './storage.js';
-import { DAY_TYPES } from './program.js';
-import { lastEntryFor, suggestion } from './progression.js';
+
+import { lastEntryFor, suggestion, describeGap } from './progression.js';
 import { createSync } from './sync.js';
 import { createProgramScreen } from './program-screen.js';
 import {
-  caloriesFromMacros, pct, todayISO, formatDate,
+  todayISO, formatDate, daysBetween,
   programWeek, sessionVolume, exerciseProgression, bestSet, weeklyVolume,
 } from './calculations.js';
 import { lineChartSVG, groupedBarChartSVG } from './charts.js';
@@ -12,7 +12,11 @@ import { $, setText, flash, chartColors, escapeHtml, escapeAttr, cssEscape } fro
 
 const store = createStorage(localStorage);
 const sync = createSync({ store });
-const todayStr = todayISO();
+// The date being logged. Defaults to today but is editable, so a session you
+// forgot to log lands on the day you actually trained. Recomputed from the
+// picker at save time rather than captured once at launch — leaving the app
+// open overnight used to file the next morning's session under yesterday.
+let sessionDate = todayISO();
 
 const num = el => (el.value === '' ? null : Number(el.value));
 
@@ -25,86 +29,12 @@ const programScreen = createProgramScreen({
   onProgramChange: () => { if ($('train').classList.contains('active')) renderTrain(); },
 });
 
-// ============================================================ TODAY (macros)
-function renderToday() {
-  const t = store.loadTargets();
-  const day = store.getDay(todayStr) || {};
-
-  setText('today-date', formatDate(todayStr));
-  setText('cals-target', t.calories);
-  setText('protein-target', t.protein);
-  setText('carbs-target', t.carbs);
-  setText('fat-target', t.fat);
-  setText('fibre-target', t.fibre);
-
-  const cals = day.calories || 0;
-  setText('cals-now', Math.round(cals).toLocaleString());
-  $('cals-bar').style.width = Math.min(pct(cals, t.calories), 100) + '%';
-  const remaining = Math.round(t.calories - cals);
-  const leftEl = $('cals-left');
-  if (remaining >= 0) {
-    leftEl.textContent = `${remaining.toLocaleString()} kcal left`;
-    leftEl.classList.remove('over');
-  } else {
-    leftEl.textContent = `${Math.abs(remaining).toLocaleString()} kcal over`;
-    leftEl.classList.add('over');
-  }
-
-  setText('protein-now', Math.round(day.protein || 0));
-  setText('carbs-now', Math.round(day.carbs || 0));
-  setText('fats-now', Math.round(day.fats || 0));
-  setText('fibre-now', Math.round(day.fibre || 0));
-
-  // Prefill the form with anything already logged today.
-  $('in-protein').value = day.protein ?? '';
-  $('in-carbs').value = day.carbs ?? '';
-  $('in-fats').value = day.fats ?? '';
-  $('in-fibre').value = day.fibre ?? '';
-  $('in-calories').value = day.calories ?? '';
-
-  renderMacroCharts();
-}
-
-function renderMacroCharts() {
-  const t = store.loadTargets();
-  const last14 = store.loadDays().slice(-14);
-  const C = chartColors();
-  $('chart-protein').innerHTML = lineChartSVG(
-    last14.map((d, i) => ({ x: i, y: d.protein || 0 })),
-    { color: C.nutrition, goal: t.protein, goalColor: C.goal, textColor: C.text });
-  $('chart-cals').innerHTML = lineChartSVG(
-    last14.map((d, i) => ({ x: i, y: d.calories || 0 })),
-    { color: C.nutrition, goal: t.calories, goalColor: C.goal, textColor: C.text });
-}
-
-function wireToday() {
-  $('calc-cals').addEventListener('click', () => {
-    $('in-calories').value = caloriesFromMacros({
-      protein: num($('in-protein')) || 0,
-      carbs: num($('in-carbs')) || 0,
-      fats: num($('in-fats')) || 0,
-    });
-  });
-
-  $('log-form').addEventListener('submit', e => {
-    e.preventDefault();
-    store.upsertDay({
-      date: todayStr,
-      protein: num($('in-protein')),
-      carbs: num($('in-carbs')),
-      fats: num($('in-fats')),
-      fibre: num($('in-fibre')),
-      calories: num($('in-calories')),
-    });
-    flash('save-note', 'Saved ✓');
-    renderToday();
-  });
-}
-
 // ============================================================ TRAIN
 function renderTrain() {
   const start = store.loadWorkoutStart();
-  setText('train-week', `Week ${programWeek(start, todayStr)}`);
+  $('session-date').value = sessionDate;
+  setText('train-week', `Week ${programWeek(start, sessionDate)}`);
+  setText('today-date', sessionDate === todayISO() ? 'today' : formatDate(sessionDate));
 
   // The day buttons come from the stored split, so Push/Pull/Legs and
   // Upper/Lower are both just data.
@@ -127,7 +57,7 @@ function renderTrain() {
 function renderSessionForm() {
   const exercises = store.loadProgram()[selectedDay] || [];
   const sessions = store.loadSessions();
-  const saved = store.getSession(todayStr, selectedDay);
+  const saved = store.getSession(sessionDate, selectedDay);
 
   if (exercises.length === 0) {
     $('session-form').innerHTML =
@@ -143,8 +73,16 @@ function renderSessionForm() {
     const badge = sug.verdict === 'up' ? '<span class="badge-up">↑ go up</span>'
       : sug.verdict === 'hold' ? '<span class="badge-hold">= hold</span>' : '';
 
+    // With exercises repeating across the split, "when" matters as much as
+    // "what" — the same lift can turn up two or seven days apart.
+    const when = sug.date
+      ? `<span class="last-when">${escapeHtml(
+          [sug.day && sug.day !== selectedDay ? sug.day : '', describeGap(sug.date, sessionDate)]
+            .filter(Boolean).join(' · '))}</span>`
+      : '';
+
     const lastLine = sug.lastText
-      ? `<div class="last-line">last: ${escapeHtml(sug.lastText)} ${badge}</div>`
+      ? `<div class="last-line">last: ${escapeHtml(sug.lastText)} ${badge}${when}</div>`
       : '<div class="last-line subtle">first time — pick a weight</div>';
 
     const lastNote = sug.note
@@ -220,14 +158,14 @@ function saveSessionFromForm() {
   }
 
   store.upsertSession({
-    date: todayStr,
+    date: sessionDate,
     day: selectedDay,
-    week: programWeek(store.loadWorkoutStart(), todayStr),
+    week: programWeek(store.loadWorkoutStart(), sessionDate),
     exercises: result,
   });
 
   if (result.length) {
-    sync.enqueue(todayStr, selectedDay);
+    sync.enqueue(sessionDate, selectedDay);
     flushSync();
   }
   setText('session-status', result.length ? 'Saved ✓' : '');
@@ -281,7 +219,7 @@ function renderVolumeChart() {
 function allExerciseNames() {
   const program = store.loadProgram();
   const names = [];
-  DAY_TYPES.forEach(day => (program[day] || []).forEach(ex => {
+  store.loadDayTypes().forEach(day => (program[day] || []).forEach(ex => {
     if (!names.includes(ex.name)) names.push(ex.name);
   }));
   return names;
@@ -342,7 +280,10 @@ function renderRecentSessions() {
   $('recent-sessions').querySelectorAll('.session-del').forEach(btn => {
     btn.addEventListener('click', () => {
       if (confirm('Delete this session?')) {
+        const gone = store.loadSessions()[Number(btn.dataset.index)];
         store.deleteSession(Number(btn.dataset.index));
+        // Queue it so the sheet clears its rows too, rather than drifting.
+        if (gone) { sync.enqueue(gone.date, gone.day); flushSync(); }
         renderSessionForm();
         renderVolumeChart();
         renderProgressionChart();
@@ -360,15 +301,16 @@ function wireTrain() {
     selectedDay = btn.dataset.day;
     renderTrain();
   });
+  // Logging a session you forgot, or one from yesterday evening.
+  $('session-date').addEventListener('change', e => {
+    sessionDate = e.target.value || todayISO();
+    renderTrain();
+  });
   wireSessionForm();
 }
 
 // ============================================================ SETTINGS
-const TARGET_FIELDS = ['calories', 'protein', 'carbs', 'fat', 'fibre'];
-
 function renderSettings() {
-  const t = store.loadTargets();
-  TARGET_FIELDS.forEach(f => { $('t-' + f).value = t[f]; });
   renderSyncState();
 }
 
@@ -403,15 +345,6 @@ async function flushSync() {
 }
 
 function wireSettings() {
-  $('targets-form').addEventListener('submit', e => {
-    e.preventDefault();
-    const t = store.loadTargets();
-    TARGET_FIELDS.forEach(f => { const v = $('t-' + f).value; if (v !== '') t[f] = Number(v); });
-    store.saveTargets(t);
-    flash('targets-note', 'Targets saved ✓');
-    renderToday();
-  });
-
   $('sync-form').addEventListener('submit', async e => {
     e.preventDefault();
     store.saveSyncSettings({ url: $('sync-url').value, secret: $('sync-secret').value });
@@ -448,7 +381,7 @@ function wireSettings() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `macros-gym-backup-${todayStr}.json`;
+    a.download = `gym-backup-${todayISO()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     flash('backup-note', 'Exported ✓');
@@ -461,8 +394,7 @@ function wireSettings() {
     const result = store.importJSON(text);
     if (result.ok) {
       flash('backup-note', 'Imported ✓');
-      renderSettings(); renderToday();
-    } else {
+      renderSettings();     } else {
       flash('backup-note', result.error, true);
     }
     e.target.value = '';
@@ -474,8 +406,7 @@ function wireSettings() {
       localStorage.clear();
       if (theme) localStorage.setItem('ht.theme', theme);
       flash('reset-note', 'All data erased.', true);
-      renderSettings(); renderToday();
-    }
+      renderSettings();     }
   });
 }
 
@@ -494,8 +425,7 @@ function wireTheme() {
   document.querySelectorAll('.theme-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       applyTheme(btn.dataset.theme);
-      renderToday();
-      if ($('prog-select').options.length) renderProgressionChart();
+            if ($('prog-select').options.length) renderProgressionChart();
     });
   });
 }
@@ -518,12 +448,13 @@ function wireNav() {
 
 // ============================================================ INIT
 wireTheme();
-wireToday();
 wireTrain();
 programScreen.wire();
 wireSettings();
 wireNav();
-renderToday();
+// Train is the screen the app opens on, so it has to render itself at start —
+// nothing else triggers it now the macros tab is gone.
+renderTrain();
 
 // Push anything logged while offline as soon as we can.
 flushSync();

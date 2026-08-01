@@ -7,7 +7,7 @@
 // because the same program notes say not to stop at the top of the range.
 
 import { parseRepRange, DEFAULT_INCREMENT } from './program.js';
-import { bestSet } from './calculations.js';
+import { bestSet, daysBetween } from './calculations.js';
 
 // Most recent logged entry for an exercise. Matches on id first, then falls
 // back to name so sessions logged before ids existed still count.
@@ -22,7 +22,25 @@ export function lastEntryFor(sessions, exerciseId, exerciseName) {
 
   const ex = session.exercises.find(e =>
     (exerciseId && e.exerciseId === exerciseId) || e.name === exerciseName);
-  return { date: session.date, name: ex.name, note: ex.note || '', sets: ex.sets || [] };
+  return {
+    date: session.date,
+    day: session.day || '',
+    name: ex.name,
+    note: ex.note || '',
+    sets: ex.sets || [],
+  };
+}
+
+// "4 days ago" / "yesterday" / "today". With exercises repeating across a
+// split, knowing *when* you last did one matters as much as the numbers.
+export function describeGap(fromDate, toDate) {
+  if (!fromDate || !toDate) return '';
+  const n = daysBetween(fromDate, toDate);
+  if (n <= 0) return 'today';
+  if (n === 1) return 'yesterday';
+  if (n < 14) return `${n} days ago`;
+  if (n < 60) return `${Math.round(n / 7)} weeks ago`;
+  return `${Math.round(n / 30)} months ago`;
 }
 
 // Did every working set land at or above the bottom of the range, and were
@@ -41,7 +59,7 @@ export function setsAllInRange(sets, repRange, targetSets) {
 //   hold — missed a set, so repeat the weight
 //   none — no history, so no suggestion at all
 export function suggestion(lastEntry, exercise) {
-  const empty = { weight: null, verdict: 'none', lastText: '', note: '' };
+  const empty = { weight: null, verdict: 'none', lastText: '', note: '', date: '', day: '' };
   if (!lastEntry) return empty;
 
   // Anchor on the heaviest set. A lighter final set is a drop-off, and basing
@@ -60,6 +78,8 @@ export function suggestion(lastEntry, exercise) {
   return {
     weight: Math.round(weight * 100) / 100,
     verdict: hit ? 'up' : 'hold',
+    date: lastEntry.date,
+    day: lastEntry.day || '',
     lastText: reps.length ? `${anchor.weight}kg × ${reps.join(', ')}` : `${anchor.weight}kg`,
     note: lastEntry.note || '',
   };

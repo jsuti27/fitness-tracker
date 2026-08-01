@@ -1,27 +1,9 @@
 // Pure calculation helpers — no DOM, no storage. Run identically in the
 // browser and in `node --test`.
 
-// --- Macros & progress ----------------------------------------------------
-
-export function caloriesFromMacros({ protein = 0, carbs = 0, fats = 0 } = {}) {
-  return Math.round((protein || 0) * 4 + (carbs || 0) * 4 + (fats || 0) * 9);
-}
-
-// Percentage of a target reached (0..unbounded). Guards against bad input.
-export function pct(value, target) {
-  if (!target || target <= 0 || value == null) return 0;
-  return Math.round((value / target) * 100);
-}
-
 // --- Date helpers (UTC to avoid timezone drift) ---------------------------
 
 const MS_PER_DAY = 86400000;
-
-export function addDays(dateStr, n) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const t = Date.UTC(y, m - 1, d) + n * MS_PER_DAY;
-  return new Date(t).toISOString().slice(0, 10);
-}
 
 export function daysBetween(aStr, bStr) {
   const [ay, am, ad] = aStr.split('-').map(Number);
@@ -41,66 +23,7 @@ export function formatDate(dateStr) {
   return `${d} ${months[m - 1]} ${y}`;
 }
 
-// --- Steps ----------------------------------------------------------------
-
-// Consecutive days ending at todayStr where steps >= goal.
-export function stepStreak(days, goal, todayStr) {
-  const stepsByDate = new Map(
-    days.filter(d => d.steps != null).map(d => [d.date, d.steps])
-  );
-  let streak = 0;
-  let cursor = todayStr;
-  while (stepsByDate.has(cursor) && stepsByDate.get(cursor) >= goal) {
-    streak += 1;
-    cursor = addDays(cursor, -1);
-  }
-  return streak;
-}
-
-// --- Weight projection ----------------------------------------------------
-
-// Linear regression of weight over time -> rate and projected goal date.
-// status: 'not-enough-data' | 'not-on-track' | 'on-track' | 'goal-reached'
-export function weightProjection(days, goalWeight) {
-  const weighIns = days
-    .filter(d => typeof d.weight === 'number' && !Number.isNaN(d.weight))
-    .sort((a, b) => (a.date < b.date ? -1 : 1));
-
-  const span = weighIns.length ? daysBetween(weighIns[0].date, weighIns.at(-1).date) : 0;
-  if (weighIns.length < 3 || span < 7) {
-    return { status: 'not-enough-data', ratePerWeek: null, etaDate: null };
-  }
-
-  const x0 = weighIns[0].date;
-  const xs = weighIns.map(d => daysBetween(x0, d.date));
-  const ys = weighIns.map(d => d.weight);
-  const n = xs.length;
-  const meanX = xs.reduce((a, b) => a + b, 0) / n;
-  const meanY = ys.reduce((a, b) => a + b, 0) / n;
-  let num = 0, den = 0;
-  for (let i = 0; i < n; i++) {
-    num += (xs[i] - meanX) * (ys[i] - meanY);
-    den += (xs[i] - meanX) ** 2;
-  }
-  const slope = den === 0 ? 0 : num / den;          // kg per day
-  const intercept = meanY - slope * meanX;
-  const ratePerWeek = Math.round(slope * 7 * 100) / 100;
-
-  const lastX = xs.at(-1);
-  const currentFitted = slope * lastX + intercept;
-
-  if (currentFitted <= goalWeight) {
-    return { status: 'goal-reached', ratePerWeek, etaDate: weighIns.at(-1).date };
-  }
-  // Must be meaningfully losing (>~50g/week) to project an ETA.
-  if (slope >= -0.007) {
-    return { status: 'not-on-track', ratePerWeek, etaDate: null };
-  }
-  const daysToGoal = Math.ceil((goalWeight - currentFitted) / slope); // slope<0 -> positive
-  return { status: 'on-track', ratePerWeek, etaDate: addDays(weighIns.at(-1).date, daysToGoal) };
-}
-
-// --- Workouts (Phase 2) ---------------------------------------------------
+// --- Workouts ---
 
 // 1-based program week number for a date, relative to the program start.
 export function programWeek(startDate, dateStr) {
