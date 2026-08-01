@@ -364,6 +364,13 @@ function renderSyncState() {
     const when = at ? new Date(at).toLocaleString() : 'never';
     setText('sync-state', `Last synced: ${when}${queued ? ` · ${queued} waiting` : ''}`);
   }
+
+  // Show why the last attempt failed. Without this a failure on a phone is
+  // undiagnosable — there is no console to open.
+  const err = store.loadSyncError();
+  const box = $('sync-error');
+  box.textContent = err ? `Last error: ${err}` : '';
+  box.classList.toggle('hidden', !err);
 }
 
 // Fire-and-forget: a failed send just leaves the session queued for next time.

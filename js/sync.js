@@ -68,7 +68,32 @@ export function createSync({ store, fetchImpl }) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ secret: settings.secret, key, rows }),
     });
-    if (!res || res.ok === false) throw new Error('Sync rejected by the sheet');
+
+    if (!res) throw new Error('No response from the sheet');
+    if (res.ok === false) throw new Error(`Sheet returned HTTP ${res.status ?? '?'}`);
+
+    // The script answers with {ok:false, error:"bad secret"} on a 200, so a
+    // 200 alone doesn't mean the rows landed. Read the body when we can.
+    if (typeof res.text === 'function') {
+      const body = (await res.text()).trim();
+      try {
+        const parsed = JSON.parse(body);
+        if (parsed && parsed.ok === false) {
+          throw new Error(`Script said: ${parsed.error || 'rejected'}`);
+        }
+      } catch (err) {
+        if (err instanceof SyntaxError) {
+          // HTML back instead of JSON means we hit a Google sign-in or error
+          // page, not the script — almost always a deployment access setting.
+          throw new Error(
+            body.slice(0, 40).toLowerCase().includes('<!doctype') || body.startsWith('<')
+              ? 'Got a Google web page instead of the script — deployment is probably not set to "Anyone"'
+              : `Unexpected reply: ${body.slice(0, 60)}`
+          );
+        }
+        throw err;
+      }
+    }
     return true;
   }
 
@@ -87,19 +112,24 @@ export function createSync({ store, fetchImpl }) {
       const program = store.loadProgram();
       let sent = 0;
       let failed = 0;
+      let lastError = '';
 
       for (const key of queue) {
         try {
           await sendSession(key, settings, program);
           store.dequeueSync(key);
           sent += 1;
-        } catch {
+        } catch (err) {
           // Leave it queued. It goes again on next save, app open, or reconnect.
+          // Keep the message — without it a failure is undiagnosable on a phone,
+          // where there is no console to read.
           failed += 1;
+          lastError = err && err.message ? err.message : String(err);
         }
       }
       if (sent > 0) store.saveSyncedAt(new Date().toISOString());
-      return { sent, failed };
+      store.saveSyncError(failed ? lastError : '');
+      return { sent, failed, error: lastError };
     },
   };
 }

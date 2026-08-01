@@ -262,6 +262,8 @@ button { cursor: pointer; font-family: inherit; }
 .pe-del { color: var(--alert); }
 
 #sync-now { width: 100%; margin-top: 9px; }
+.sync-error { font-size: .78rem; color: var(--alert); background: var(--well); border-radius: 10px; padding: 9px 11px; margin-top: 8px; word-break: break-word; }
+.sync-error.hidden { display: none; }
 
 /* ===== Dark theme ===== */
 :root[data-theme="dark"] {

@@ -26,6 +26,7 @@ const KEYS = {
   syncSettings: 'ht.syncSettings',
   syncQueue: 'ht.syncQueue',
   syncedAt: 'ht.syncedAt',
+  syncError: 'ht.syncError',
 };
 
 // A session is identified by the day it was done and which day type it was.
@@ -208,6 +209,14 @@ export function createStorage(backend) {
     },
     saveSyncedAt(iso) {
       backend.setItem(KEYS.syncedAt, iso);
+    },
+    // The last sync failure, kept so it can be shown in Settings. There is no
+    // console to read on a phone, so a swallowed error is an undiagnosable one.
+    loadSyncError() {
+      return backend.getItem(KEYS.syncError) || '';
+    },
+    saveSyncError(msg) {
+      backend.setItem(KEYS.syncError, msg || '');
     },
 
     // --- Backup ---
