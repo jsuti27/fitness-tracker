@@ -395,8 +395,18 @@ function wireSettings() {
   $('sync-now').addEventListener('click', async () => {
     const s = store.loadSyncSettings();
     if (!s.url) { flash('sync-note', 'Add the web app URL first.', true); return; }
+
+    // Nothing logged yet is the common case on a fresh install. Saying
+    // "0 sessions synced ✓" there reads like a success and hides the real
+    // reason nothing reached the sheet.
+    const sessions = store.loadSessions();
+    if (sessions.length === 0) {
+      flash('sync-note', 'Nothing to sync yet — log a session on the Train tab first.', true);
+      return;
+    }
+
     // Re-queue everything so "Sync now" rebuilds the sheet from scratch.
-    store.loadSessions().forEach(sess => sync.enqueue(sess.date, sess.day));
+    sessions.forEach(sess => sync.enqueue(sess.date, sess.day));
     flash('sync-note', 'Syncing…');
     const { sent, failed } = await sync.flush();
     renderSyncState();
