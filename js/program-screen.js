@@ -6,7 +6,7 @@
 // history and charts still read correctly.
 
 import { parseRepRange, DEFAULT_INCREMENT } from './program.js';
-import { $, setText, flash, escapeAttr, escapeHtml } from './dom.js';
+import { $, setText, flash, escapeAttr, escapeHtml, dayColors } from './dom.js';
 
 export function createProgramScreen({ store, onProgramChange }) {
   let programDay = null;
@@ -17,9 +17,9 @@ export function createProgramScreen({ store, onProgramChange }) {
 
     renderDayTypes(days);
 
-    $('prog-day-picker').style.gridTemplateColumns = `repeat(${Math.min(days.length, 3)}, 1fr)`;
-    $('prog-day-picker').innerHTML = days.map(d =>
-      `<button type="button" class="pday-btn${d === programDay ? ' active' : ''}" data-day="${escapeAttr(d)}">${escapeHtml(d)}</button>`
+    const dayC = dayColors(days);
+    $('prog-day-picker').innerHTML = days.map((d, i) =>
+      `<button type="button" class="pday-btn${d === programDay ? ' active' : ''}" style="--day-accent:${dayC[i]}" data-day="${escapeAttr(d)}">${escapeHtml(d)}</button>`
     ).join('');
 
     setText('ax-day', programDay || '—');

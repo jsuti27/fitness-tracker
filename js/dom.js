@@ -11,8 +11,18 @@ export const cssVar = n =>
 export function chartColors() {
   return {
     nutrition: cssVar('--nutrition'), training: cssVar('--training'),
-    goal: cssVar('--alert'), text: cssVar('--muted'),
+    goal: cssVar('--alert'), body: cssVar('--body'), activity: cssVar('--activity'),
+    text: cssVar('--muted'),
   };
+}
+
+// One identity colour per training day, resolved from the theme so it follows
+// light/dark. The same colour is used for the day button, its bar in the volume
+// chart and its legend dot — so a day reads as itself everywhere.
+export function dayColors(days) {
+  const c = chartColors();
+  const palette = [c.training, c.nutrition, c.goal, c.body, c.activity];
+  return (days || []).map((_, i) => palette[i % palette.length]);
 }
 
 // Show a transient message under a form, then clear it.

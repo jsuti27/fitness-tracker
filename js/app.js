@@ -8,7 +8,7 @@ import {
   programWeek, sessionVolume, exerciseProgression, bestSet, weeklyVolume,
 } from './calculations.js';
 import { lineChartSVG, groupedBarChartSVG } from './charts.js';
-import { $, setText, flash, chartColors, escapeHtml, escapeAttr, cssEscape } from './dom.js';
+import { $, setText, flash, chartColors, dayColors, escapeHtml, escapeAttr, cssEscape } from './dom.js';
 
 const store = createStorage(localStorage);
 const sync = createSync({ store });
@@ -26,7 +26,12 @@ let selectedDay = 'Push';
 // changed so the Train screen can re-render against it.
 const programScreen = createProgramScreen({
   store,
-  onProgramChange: () => { if ($('train').classList.contains('active')) renderTrain(); },
+  onProgramChange: () => {
+    if ($('train').classList.contains('active')) renderTrain();
+    // The program is dirty now. Without this the sheet only catches up the next
+    // time a session is saved, so a deleted day could sit stale for days.
+    flushProgramSoon();
+  },
 });
 
 // ============================================================ TRAIN
@@ -41,9 +46,11 @@ function renderTrain() {
   const days = store.loadDayTypes();
   if (!days.includes(selectedDay)) selectedDay = days[0];
 
-  $('day-picker').style.gridTemplateColumns = `repeat(${Math.min(days.length, 3)}, 1fr)`;
-  $('day-picker').innerHTML = days.map(d =>
-    `<button type="button" class="day-btn${d === selectedDay ? ' active' : ''}" data-day="${escapeAttr(d)}">${escapeHtml(d)}</button>`
+  // Column count is left to CSS auto-fit — hardcoding it here orphaned the 4th
+  // day on its own row once the split became user-editable.
+  const colors = dayColors(days);
+  $('day-picker').innerHTML = days.map((d, i) =>
+    `<button type="button" class="day-btn${d === selectedDay ? ' active' : ''}" style="--day-accent:${colors[i]}" data-day="${escapeAttr(d)}">${escapeHtml(d)}</button>`
   ).join('');
 
   renderSessionForm();
@@ -200,11 +207,6 @@ function wireSessionForm() {
 }
 
 // One colour per day type, cycling if the split has more days than colours.
-function dayColors(days) {
-  const C = chartColors();
-  const palette = [C.training, C.nutrition, C.goal, C.body || '#14b8c4', C.text];
-  return days.map((_, i) => palette[i % palette.length]);
-}
 
 function renderVolumeChart() {
   const days = store.loadDayTypes();
@@ -338,6 +340,18 @@ function renderSyncState() {
   const box = $('sync-error');
   box.textContent = err ? `Last error: ${err}` : '';
   box.classList.toggle('hidden', !err);
+}
+
+// Program edits commit field by field, so a burst of them shouldn't be a burst
+// of requests. Coalesce into one send once the editing stops. The dirty flag is
+// persisted, so a dropped or failed send just goes again on the next flush.
+let programFlushTimer = null;
+function flushProgramSoon() {
+  clearTimeout(programFlushTimer);
+  programFlushTimer = setTimeout(async () => {
+    const { sent, failed } = await sync.flush();
+    if (sent || failed) renderSyncState();
+  }, 800);
 }
 
 // Fire-and-forget: a failed send just leaves the session queued for next time.

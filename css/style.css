@@ -150,9 +150,26 @@ button { cursor: pointer; font-family: inherit; }
 
 /* --- Train --- */
 .pill { font-size: .76rem; font-weight: 700; padding: 5px 11px; border-radius: 999px; }
-.day-picker { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-.day-btn { background: var(--well); color: var(--ink-2); border: 1.5px solid transparent; border-radius: 13px; padding: 13px; font-weight: 700; font-size: .95rem; }
-.day-btn.active { background: var(--training); color: #fff; border-color: var(--training); box-shadow: 0 6px 16px rgba(99,102,241,.28); }
+/* auto-fit rather than a fixed count: the split is user-editable, so three days
+   or five both have to lay out sensibly. Four short names sit on one row at
+   412px; longer ones wrap to 2x2 on their own. */
+.day-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 8px; margin-bottom: 16px; }
+.day-btn, .pday-btn {
+  --day-accent: var(--training);
+  background: var(--well); color: var(--ink-2);
+  border: 1.5px solid transparent; border-radius: 13px;
+  padding: 13px 8px; font-weight: 700; font-size: .95rem; min-height: 44px;
+  transition: background .16s ease, color .16s ease, border-color .16s ease;
+}
+/* Tint + outline + coloured label rather than a solid fill. Every accent stays
+   legible against it in both themes, and the day reads as *its own* colour —
+   the same one it gets in the volume chart and legend. */
+.day-btn.active, .pday-btn.active {
+  background: color-mix(in srgb, var(--day-accent) 18%, transparent);
+  border-color: var(--day-accent);
+  color: var(--day-accent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--day-accent) 20%, transparent);
+}
 
 .exercise { border: 1px solid var(--line); border-radius: 15px; padding: 13px; margin-bottom: 11px; background: var(--card); }
 .exercise-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
@@ -253,8 +270,7 @@ button { cursor: pointer; font-family: inherit; }
 .dot-legs { background: var(--alert); }
 
 /* ===== Program editor ===== */
-.pday-btn { background: var(--well); color: var(--ink-2); border: 1.5px solid transparent; border-radius: 13px; padding: 13px; font-weight: 700; font-size: .95rem; }
-.pday-btn.active { background: var(--training); color: #fff; border-color: var(--training); box-shadow: 0 6px 16px rgba(99,102,241,.28); }
+/* .pday-btn styling is shared with .day-btn above — one rule, one look. */
 
 .prog-edit { border: 1px solid var(--line); border-radius: 15px; padding: 12px; margin-bottom: 10px; background: var(--card); }
 .prog-edit .pe-name { font-weight: 700; margin-bottom: 9px; }
@@ -299,6 +315,22 @@ button { cursor: pointer; font-family: inherit; }
   --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
 }
 :root[data-theme="dark"] .primary { box-shadow: 0 6px 18px rgba(30,212,126,.22); }
+
+/* Dark mode was a flat charcoal field. Two very low-opacity accent washes give
+   it depth and warmth without touching text contrast — the colour sits behind
+   the cards, never under the copy. Fixed so it doesn't slide around on scroll. */
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(1100px 620px at 12% -8%, rgba(129,140,248,.13), transparent 62%),
+    radial-gradient(820px 520px at 96% 4%, rgba(37,205,214,.09), transparent 58%),
+    radial-gradient(680px 460px at 50% 104%, rgba(255,138,68,.07), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+/* A hairline of light along the top edge lifts each card off that wash. */
+:root[data-theme="dark"] .card {
+  border-top: 1px solid rgba(255,255,255,.055);
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, .screen.active { animation: none !important; transition: none !important; }
