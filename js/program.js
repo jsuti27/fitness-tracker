@@ -9,29 +9,40 @@ export const DEFAULT_WORKOUT_START = '2025-10-27';
 // 7.5 -> 9 -> 10, while the lat pulldown moves in 2.5s.
 export const DEFAULT_INCREMENT = 2.5;
 
+// Rep range width scales with how big the smallest available load jump is as a
+// percentage of the working load. A 5kg plate is a rounding error on a leg press
+// and a doubling on a lateral raise, so the coarse lifts get wide ranges — you
+// climb reps to buy runway before the jump becomes survivable.
+//
+//   under ~10% of load -> narrow (8-12)
+//   10-25%             -> medium (10-15)
+//   over 25%           -> wide   (12-20)
+//
+// Increments mirror what gyms actually stock: 5kg on machines and cable stacks,
+// 2.5kg on dumbbells and barbells. A suggestion you cannot load is useless.
 export const DEFAULT_PROGRAM = {
   Push: [
-    { name: 'Pec Fly Machine', targetSets: 2, repRange: '10-12' },
-    { name: 'Smith Machine Incline Press', targetSets: 3, repRange: '8-10' },
-    { name: 'Horizontal Press (Machine/Plate)', targetSets: 3, repRange: '8-10' },
-    { name: 'Tricep Extension (Rope)', targetSets: 2, repRange: '10-12' },
-    { name: 'DB Front Raise', targetSets: 2, repRange: '10-12' },
-    { name: 'Machine Shoulder Press', targetSets: 3, repRange: '8-12' },
+    { name: 'Pec Fly Machine', targetSets: 2, repRange: '10-15', increment: 5 },
+    { name: 'Smith Machine Incline Press', targetSets: 3, repRange: '8-12', increment: 5 },
+    { name: 'Horizontal Press (Machine/Plate)', targetSets: 3, repRange: '8-12', increment: 5 },
+    { name: 'Tricep Extension (Rope)', targetSets: 2, repRange: '12-20', increment: 5 },
+    { name: 'DB Front Raise', targetSets: 2, repRange: '12-20', increment: 2.5 },
+    { name: 'Machine Shoulder Press', targetSets: 3, repRange: '8-12', increment: 5 },
   ],
   Pull: [
-    { name: 'Lat Pullover (Rope)', targetSets: 2, repRange: '10-12' },
-    { name: 'Lat Pulldown', targetSets: 3, repRange: '8-10' },
-    { name: 'Seated Cable Row', targetSets: 3, repRange: '8-12' },
-    { name: 'DB Preacher Curl', targetSets: 3, repRange: '10-12' },
-    { name: 'Standing DB Lateral Raise', targetSets: 3, repRange: '8-12' },
+    { name: 'Lat Pullover (Rope)', targetSets: 2, repRange: '12-20', increment: 5 },
+    { name: 'Lat Pulldown', targetSets: 3, repRange: '8-12', increment: 5 },
+    { name: 'Seated Cable Row', targetSets: 3, repRange: '8-12', increment: 5 },
+    { name: 'DB Preacher Curl', targetSets: 3, repRange: '10-15', increment: 2.5 },
+    { name: 'Standing DB Lateral Raise', targetSets: 3, repRange: '12-20', increment: 2.5 },
   ],
   Legs: [
-    { name: 'Standing Calf Raise', targetSets: 2, repRange: '10-15' },
-    { name: 'Lying Leg Curl', targetSets: 2, repRange: '10-12' },
-    { name: 'Leg Extension', targetSets: 3, repRange: '8-12' },
-    { name: 'BB Hip Thrust', targetSets: 3, repRange: '8-10' },
-    { name: 'Leg Press', targetSets: 3, repRange: '8-10' },
-    { name: 'BB RDL', targetSets: 2, repRange: '10' },
+    { name: 'Standing Calf Raise', targetSets: 2, repRange: '12-20', increment: 5 },
+    { name: 'Lying Leg Curl', targetSets: 2, repRange: '10-15', increment: 5 },
+    { name: 'Leg Extension', targetSets: 3, repRange: '10-15', increment: 5 },
+    { name: 'BB Hip Thrust', targetSets: 3, repRange: '8-12', increment: 2.5 },
+    { name: 'Leg Press', targetSets: 3, repRange: '8-15', increment: 5 },
+    { name: 'BB RDL', targetSets: 2, repRange: '8-12', increment: 2.5 },
   ],
 };
 

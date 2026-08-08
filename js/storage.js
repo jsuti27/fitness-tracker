@@ -15,6 +15,7 @@ const KEYS = {
   syncedAt: 'ht.syncedAt',
   syncError: 'ht.syncError',
   dayTypes: 'ht.dayTypes',
+  programDirty: 'ht.programDirty',
 };
 
 // A session is identified by the day it was done and which day type it was.
@@ -41,8 +42,12 @@ export function createStorage(backend) {
       }
       return stored;
     },
+    // Flagging here rather than at each mutation's call site means a CRUD
+    // method added later cannot forget to mark the program as needing a sync —
+    // every one of them funnels through saveProgram.
     saveProgram(program) {
       backend.setItem(KEYS.program, JSON.stringify(program));
+      this.markProgramDirty();
     },
     addExercise(day, { name, targetSets, repRange, increment }) {
       const program = this.loadProgram();
@@ -98,8 +103,11 @@ export function createStorage(backend) {
       }
       return [...DEFAULT_DAY_TYPES];
     },
+    // Day order drives the Program tab's row order, so reordering days is a
+    // program change even when no exercise moved.
     saveDayTypes(days) {
       backend.setItem(KEYS.dayTypes, JSON.stringify(days));
+      this.markProgramDirty();
     },
     addDayType(name) {
       const days = this.loadDayTypes();
@@ -230,6 +238,19 @@ export function createStorage(backend) {
       const queue = this.loadSyncQueue().filter(k => k !== key);
       this.saveSyncQueue(queue);
       return queue;
+    },
+    // The program is small and has exactly one writer, so it syncs as a whole
+    // tab rather than a keyed upsert. A boolean is enough to know it's stale — a
+    // sentinel in the session queue would have to be special-cased where
+    // sendSession splits keys on "|".
+    markProgramDirty() {
+      backend.setItem(KEYS.programDirty, '1');
+    },
+    loadProgramDirty() {
+      return backend.getItem(KEYS.programDirty) === '1';
+    },
+    clearProgramDirty() {
+      backend.setItem(KEYS.programDirty, '');
     },
     loadSyncedAt() {
       return backend.getItem(KEYS.syncedAt) || null;

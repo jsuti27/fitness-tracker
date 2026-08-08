@@ -105,3 +105,35 @@ Go back to your Sheet — a `Sets` tab should have appeared with your sessions i
 | Browser check returns HTML, not `{"ok":true...}` | The deployment isn't public — redo Step 4 with *Who has access: Anyone* |
 | Nothing appears in the Sheet | Make sure you deployed from the script *inside that Sheet*, not a standalone project |
 | Changed the script since deploying | **Deploy → Manage deployments → ✏️ → Version: New version → Deploy.** Editing the code alone doesn't update the live URL |
+
+---
+
+## The Program tab
+
+Once you're on this version of the script, the app writes a second tab called
+**Program** alongside `Sets`. You don't set it up — it appears the first time
+the app sends a program change.
+
+| Column | What it is |
+|---|---|
+| Day | Which day type the exercise belongs to (Push, Pull, Legs, …) |
+| Order | Position within that day, starting at 1 |
+| Exercise | Name as it appears in the app |
+| Target Sets | How many sets the program calls for |
+| Rep Range | e.g. `8-12`, or a single number like `10` |
+| Increment | The weight jump the app suggests when you earn one |
+| Exercise ID | The app's internal id for this exercise |
+
+**Why it matters.** Your logged sets are in the `Sets` tab, but the *program* —
+exercises, rep ranges, increments — lives only in your phone's browser storage.
+Clear your site data or lose the phone and it's gone. This tab is its only
+backup.
+
+**It is overwritten, not merged.** Every program change in the app replaces the
+whole tab. Anything you type into it by hand will be lost. Edit the program in
+the app, not here.
+
+**Don't change the Exercise ID column.** All your training history is keyed on
+it. If you ever rebuild your program from this tab, keeping the ids identical is
+what keeps each exercise attached to its past sessions — change one and that
+exercise's history is orphaned.

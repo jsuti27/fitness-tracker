@@ -1,6 +1,6 @@
 import { createStorage } from './storage.js';
 
-import { lastEntryFor, suggestion, describeGap } from './progression.js';
+import { lastEntriesFor, suggestion, describeGap } from './progression.js';
 import { createSync } from './sync.js';
 import { createProgramScreen } from './program-screen.js';
 import {
@@ -66,11 +66,15 @@ function renderSessionForm() {
   }
 
   $('session-form').innerHTML = exercises.map(ex => {
-    const sug = suggestion(lastEntryFor(sessions, ex.id, ex.name), ex);
+    // Two entries: the last one to suggest from, and the one before it so
+    // rep-only progress at the same weight can be told apart from a stall.
+    const history = lastEntriesFor(sessions, ex.id, ex.name, 2);
+    const sug = suggestion(history.at(-1) || null, ex, history.length > 1 ? history.at(-2) : null);
     const logged = saved && (saved.exercises || [])
       .find(e => e.exerciseId === ex.id || e.name === ex.name);
 
     const badge = sug.verdict === 'up' ? '<span class="badge-up">↑ go up</span>'
+      : sug.verdict === 'building' ? '<span class="badge-building">↗ building</span>'
       : sug.verdict === 'hold' ? '<span class="badge-hold">= hold</span>' : '';
 
     // With exercises repeating across the split, "when" matters as much as

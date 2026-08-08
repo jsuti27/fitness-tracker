@@ -8,15 +8,40 @@
 
 import { sessionKey } from './storage.js';
 import { setsAllInRange } from './progression.js';
-import { DAY_TYPES } from './program.js';
+
+// Flatten the program into sheet rows. Carries the exercise id, which is what
+// makes an export/edit/import round-trip safe — reimporting with ids intact
+// keeps every logged session attached to its exercise.
+export function programRows(program, dayTypes) {
+  const rows = [];
+  for (const day of dayTypes || []) {
+    const exercises = (program || {})[day];
+    if (!Array.isArray(exercises)) continue;
+    exercises.forEach((ex, i) => {
+      rows.push({
+        day,
+        order: i + 1,
+        exercise: ex.name,
+        targetSets: ex.targetSets,
+        repRange: ex.repRange,
+        increment: ex.increment == null ? 2.5 : ex.increment,
+        exerciseId: ex.id,
+      });
+    });
+  }
+  return rows;
+}
 
 // Flatten a session into sheet rows. The note rides on the exercise's first
 // row only, so it reads once rather than repeating down the set rows.
 export function sessionRows(session, program) {
   const byId = new Map();
   const byName = new Map();
-  for (const day of DAY_TYPES) {
-    for (const ex of (program && program[day]) || []) {
+  // Walk the program's own day keys rather than the seed default, so exercises
+  // on a day type the user added are still found.
+  for (const exercises of Object.values(program || {})) {
+    if (!Array.isArray(exercises)) continue;
+    for (const ex of exercises) {
       byId.set(ex.id, ex);
       if (!byName.has(ex.name)) byName.set(ex.name, ex);
     }
@@ -100,6 +125,21 @@ export function createSync({ store, fetchImpl, pauseImpl }) {
     return true;
   }
 
+  // The program goes as a whole tab rather than a keyed upsert: it is ~20 rows,
+  // has one writer, and deletions have to propagate. Diffing would be more code
+  // for no benefit.
+  async function sendProgram(settings) {
+    const rows = programRows(store.loadProgram(), store.loadDayTypes());
+    const res = await doFetch(settings.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ secret: settings.secret, kind: 'program', rows }),
+    });
+    if (!res) throw new Error('No response from the sheet');
+    if (res.ok === false) throw new Error(`Sheet returned HTTP ${res.status ?? '?'}`);
+    return true;
+  }
+
   return {
     enqueue(date, day) {
       store.enqueueSync(sessionKey(date, day));
@@ -108,7 +148,8 @@ export function createSync({ store, fetchImpl, pauseImpl }) {
     async flush() {
       const settings = store.loadSyncSettings();
       const queue = store.loadSyncQueue();
-      if (!settings.url || queue.length === 0 || !doFetch) {
+      const programDirty = store.loadProgramDirty();
+      if (!settings.url || !doFetch || (queue.length === 0 && !programDirty)) {
         return { sent: 0, failed: 0 };
       }
 
@@ -116,8 +157,22 @@ export function createSync({ store, fetchImpl, pauseImpl }) {
       let sent = 0;
       let failed = 0;
       let lastError = '';
-
       let first = true;
+
+      // Program first — the Program tab is what makes the Sets tab readable.
+      // A failure here must not stop sessions going.
+      if (programDirty) {
+        try {
+          await sendProgram(settings);
+          store.clearProgramDirty();
+          sent += 1;
+          first = false;
+        } catch (err) {
+          failed += 1;
+          lastError = err && err.message ? err.message : String(err);
+        }
+      }
+
       for (const key of queue) {
         try {
           // Apps Script throttles rapid successive writes to the same sheet,

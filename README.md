@@ -53,16 +53,31 @@ Straight from the coach's program notes:
 
 The app applies that for you. Log a session, and next time you open that day:
 
-- **`↑ go up`** — every working set landed at or above the bottom of the rep range, and you
-  did at least the target number of sets. The weight box is pre-filled with last time's
-  weight plus that exercise's increment.
-- **`= hold`** — you came up short on at least one set. The box is pre-filled with the same
-  weight as last time.
+- **`↑ go up`** — your **heaviest** set reached the **top** of the rep range, every other set
+  cleared the bottom, and you did at least the target number of sets. The weight box is
+  pre-filled with last time's weight plus that exercise's increment.
+- **`↗ building`** — same weight as the session before, but **more total reps**. You're
+  overloading without adding load, which is exactly how you earn the next jump. The box holds
+  last time's weight.
+- **`= hold`** — no rep improvement and the range wasn't met. Same weight again.
 - **no badge** — no history for this lift yet, so no suggestion.
 
 Beating the top of the range still counts as hitting it. Suggestions anchor on the *heaviest*
 set of the last session, so a lighter drop-off set doesn't walk the weight down over time.
 Every suggestion is just a starting value — type over it whenever you want.
+
+### Why the top of the range matters
+
+Requiring only the *bottom* of the range promotes you the moment you scrape the minimum, so
+you land below the range at the new weight and grind back. Requiring the heaviest set to reach
+the top means you bank the reps first. The other sets only have to clear the bottom, because
+demanding the top on every set stalls on ordinary within-session fatigue.
+
+This is also why rep ranges should be **wider where the weight jump is coarser**. A 5kg plate
+is a rounding error on a leg press and a doubling on a 2.5kg lateral raise — so the lateral
+raise gets `12-20` and buys its runway in reps, while the leg press can sit at `8-15`. Set each
+exercise's increment to what your gym actually stocks (usually 5kg on machines and cable
+stacks, 2.5kg on dumbbells), or the app will suggest weights you can't load.
 
 ---
 

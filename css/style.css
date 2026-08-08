@@ -223,9 +223,12 @@ button { cursor: pointer; font-family: inherit; }
 /* "last: 10kg × 12, 11  ↑ go up" — the line that decides your next set. */
 .last-line { font-size: .8rem; color: var(--ink-2); margin: -4px 0 8px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .last-note { font-size: .78rem; color: var(--muted); margin: -4px 0 9px; font-style: italic; }
-.badge-up, .badge-hold { font-size: .68rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; white-space: nowrap; letter-spacing: .02em; }
+.badge-up, .badge-hold, .badge-building { font-size: .68rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; white-space: nowrap; letter-spacing: .02em; }
 .badge-up { color: var(--brand); background: var(--activity-soft); }
 .badge-hold { color: var(--muted); background: var(--well); }
+/* Same weight, but more reps than last time — overload without a load change.
+   Its own colour so it doesn't read as the failure that "hold" implies. */
+.badge-building { color: var(--nutrition); background: var(--nutrition-soft); }
 
 /* A prefilled weight is a suggestion until it's touched. */
 .set-row input.suggested { color: var(--muted); font-style: italic; }
