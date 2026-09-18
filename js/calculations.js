@@ -42,7 +42,7 @@ export function programWeek(startDate, dateStr) {
 }
 
 // Total number of working sets logged in a session.
-export function sessionVolume(session) {
+export function sessionSetCount(session) {
   if (!session || !Array.isArray(session.exercises)) return 0;
   return session.exercises.reduce((sum, ex) => sum + (ex.sets ? ex.sets.length : 0), 0);
 }

@@ -378,3 +378,9 @@ button { cursor: pointer; font-family: inherit; }
    letterbox it into a narrow strip in the middle of a wide card. Height from
    the viewBox, width from the container. */
 .chart-auto { height: auto; }
+
+/* The history row's work figure is the number the chart above it plots. Tinted
+   to the chart's own colour so the link is visible without a caption — three
+   sessions can read "20 reps" and sit at three different heights, and without
+   this the chart looks like it disagrees with the list under it. */
+.prog-work { color: var(--training); }

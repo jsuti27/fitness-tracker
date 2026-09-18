@@ -6,7 +6,7 @@ import { createSync } from './sync.js';
 import { createProgramScreen } from './program-screen.js';
 import {
   todayISO, formatDate, shortDate, daysBetween,
-  programWeek, sessionVolume, exerciseProgression, bestSet, weeklyVolume,
+  programWeek, sessionSetCount, exerciseProgression, bestSet, weeklyVolume,
 } from './calculations.js';
 import { lineChartSVG, groupedBarChartSVG, progressionChartSVG } from './charts.js';
 import { $, setText, flash, chartColors, dayColors, escapeHtml, escapeAttr, cssEscape } from './dom.js';
@@ -345,7 +345,7 @@ function renderProgressionChart() {
   $('prog-history').innerHTML = prog.slice().reverse().map(p => `
     <div class="prog-row">
       <span>${formatDate(p.date)}</span>
-      <span><b>${p.best.weight}kg × ${p.best.reps}</b> · ${p.totalReps} reps total</span>
+      <span><b>${p.best.weight}kg × ${p.best.reps}</b> · ${p.totalReps} reps · <b class="prog-work">${p.volume}kg</b></span>
     </div>`).join('');
 }
 
@@ -366,7 +366,7 @@ function renderRecentSessions() {
       <div class="session-item">
         <div>
           <div class="session-day">${s.day} <span class="muted small">· Week ${s.week ?? '—'}</span></div>
-          <div class="session-meta">${formatDate(s.date)} · ${sessionVolume(s)} sets</div>
+          <div class="session-meta">${formatDate(s.date)} · ${sessionSetCount(s)} sets</div>
           <div class="session-meta">${topLine}</div>
         </div>
         <button class="session-del" data-index="${realIndex}" title="Delete">🗑</button>
