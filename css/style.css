@@ -237,15 +237,25 @@ button { cursor: pointer; font-family: inherit; }
 
 /* ===== Session logging (Train) ===== */
 
+/* Names each progression chart. Without them the reps chart reads as a second
+   opinion about weight rather than a different measurement. */
+.chart-label { font-size: .72rem; font-weight: 700; color: var(--muted); margin: 10px 0 2px; letter-spacing: .02em; }
+
 /* "last: 10kg × 12, 11  ↑ go up" — the line that decides your next set. */
 .last-line { font-size: .8rem; color: var(--ink-2); margin: -4px 0 8px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .last-note { font-size: .78rem; color: var(--muted); margin: -4px 0 9px; font-style: italic; }
-.badge-up, .badge-hold, .badge-building { font-size: .68rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; white-space: nowrap; letter-spacing: .02em; }
+.badge-up, .badge-hold, .badge-building, .badge-fading { font-size: .68rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; white-space: nowrap; letter-spacing: .02em; }
 .badge-up { color: var(--brand); background: var(--activity-soft); }
 .badge-hold { color: var(--muted); background: var(--well); }
 /* Same weight, but more reps than last time — overload without a load change.
    Its own colour so it doesn't read as the failure that "hold" implies. */
 .badge-building { color: var(--nutrition); background: var(--nutrition-soft); }
+
+/* Same weight, fewer reps than last time. Deliberately louder than "hold":
+   hold means you stayed put, fading means you went backwards, and those call
+   for different decisions. Always paired with a reason, never shown bare. */
+.badge-fading { color: var(--alert); background: #ffe8ec; }
+.fade-why { font-size: .72rem; color: var(--alert); font-weight: 600; }
 
 /* A prefilled weight is a suggestion until it's touched. */
 .set-row input.suggested { color: var(--muted); font-style: italic; }
@@ -335,3 +345,36 @@ button { cursor: pointer; font-family: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, .screen.active { animation: none !important; transition: none !important; }
 }
+
+/* Rest timer. Sticks to the top of the Train screen while a rest runs — at the
+   gym the phone is on a bench at arm's length, and a countdown you have to
+   scroll to find is one you stop trusting. */
+.rest-bar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 12px;
+  margin: 0 0 12px; padding: 10px 14px;
+  background: var(--training-soft); border-radius: 14px;
+  border: 1.5px solid var(--training);
+}
+.rest-clock {
+  font-size: 1.5rem; font-weight: 800; color: var(--training);
+  /* Tabular figures stop the whole row twitching left and right as digits
+     change — at a glance that movement reads as the timer misbehaving. */
+  font-variant-numeric: tabular-nums; letter-spacing: .01em; min-width: 68px;
+}
+.rest-for { flex: 1; font-size: .8rem; color: var(--ink-2); font-weight: 600; }
+.rest-skip {
+  background: none; border: 0; color: var(--muted);
+  font-size: .78rem; font-weight: 700; padding: 6px 10px; border-radius: 10px;
+}
+
+/* Last ten seconds. Colour carries in peripheral vision where a digit doesn't,
+   which is the whole point when you're looking at a dumbbell rack instead. */
+.rest-bar.ending { background: #ffe8ec; border-color: var(--alert); }
+.rest-bar.ending .rest-clock { color: var(--alert); }
+
+/* The labelled progression chart keeps its own proportions (see charts.js), so
+   it must not also be pinned to .chart's fixed 150px height — that would
+   letterbox it into a narrow strip in the middle of a wide card. Height from
+   the viewBox, width from the container. */
+.chart-auto { height: auto; }

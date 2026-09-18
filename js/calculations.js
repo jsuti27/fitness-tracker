@@ -23,6 +23,15 @@ export function formatDate(dateStr) {
   return `${d} ${months[m - 1]} ${y}`;
 }
 
+// "11 Sep" — the year is dead weight on a chart axis where every point is
+// within a few months of the others.
+export function shortDate(dateStr) {
+  if (!dateStr) return '';
+  const [, m, d] = dateStr.split('-').map(Number);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${d} ${months[m - 1]}`;
+}
+
 // --- Workouts ---
 
 // 1-based program week number for a date, relative to the program start.
@@ -89,18 +98,27 @@ export function weeklyVolume(sessions, dayTypes = ['Push', 'Pull', 'Legs']) {
 
 // Progression history for one exercise across sessions, oldest -> newest.
 // Each point: { date, topWeight, totalReps, best:{weight,reps} }.
-export function exerciseProgression(sessions, exerciseName) {
+// Matches on id first and falls back to name, so renaming a lift keeps its
+// chart and history — the same rule progression.js already uses to pick the
+// entry it suggests from. Matching on name alone silently emptied both.
+export function exerciseProgression(sessions, exerciseName, exerciseId = null) {
+  const matcher = e => (exerciseId && e.exerciseId === exerciseId) || e.name === exerciseName;
+
   return (sessions || [])
-    .filter(s => s.exercises && s.exercises.some(e => e.name === exerciseName))
+    .filter(s => s.exercises && s.exercises.some(matcher))
     .sort((a, b) => (a.date < b.date ? -1 : 1))
     .map(s => {
-      const ex = s.exercises.find(e => e.name === exerciseName);
+      const ex = s.exercises.find(matcher);
       const sets = (ex.sets || []).filter(set => set.weight != null);
       const best = bestSet(sets);
       return {
         date: s.date,
         topWeight: best ? best.weight : 0,
         totalReps: sets.reduce((sum, set) => sum + (set.reps || 0), 0),
+        // Every set's weight x reps, added up. The one number that moves when
+        // you add load OR reps, so it tracks progress on a lift parked at the
+        // same weight — which top weight alone cannot do.
+        volume: sets.reduce((sum, set) => sum + set.weight * (set.reps || 0), 0),
         best: best || { weight: 0, reps: 0 },
       };
     });

@@ -88,12 +88,32 @@ export function earnedIncrease(sets, repRange, targetSets) {
   return anchor != null && anchor.reps >= range.high;
 }
 
+// Total reps last session minus the session before, but only when both sessions
+// were anchored at the same weight. Rep counts across different loads aren't
+// comparable, so those return null rather than a misleading zero.
+export function repsTrend(lastEntry, priorEntry) {
+  if (!lastEntry || !priorEntry) return null;
+  const anchor = bestSet(lastEntry.sets);
+  const priorAnchor = bestSet(priorEntry.sets);
+  if (!anchor || !priorAnchor || anchor.weight !== priorAnchor.weight) return null;
+  return totalReps(lastEntry.sets) - totalReps(priorEntry.sets);
+}
+
 // What to put in the weight box, and why.
-//   up   — hit the range last time, so add the increment
-//   hold — missed a set, so repeat the weight
-//   none — no history, so no suggestion at all
+//   up      — hit the range last time, so add the increment
+//   building— same weight, more total reps: overloading without adding load
+//   fading  — same weight, fewer total reps: going backwards, so hold
+//   hold    — missed a set, so repeat the weight
+//   none    — no history, so no suggestion at all
+//
+// `fading` outranks `up`. The coach's rule looks at one session in isolation, so
+// a lift can shed reps week over week and still pass the gate — which is exactly
+// how the incline DB press got told to add 2.5kg while its volume fell 25 → 23.
+// Adding load on top of falling volume buys a worse session, so the trend wins.
 export function suggestion(lastEntry, exercise, priorEntry = null) {
-  const empty = { weight: null, verdict: 'none', lastText: '', note: '', date: '', day: '' };
+  const empty = {
+    weight: null, verdict: 'none', lastText: '', note: '', date: '', day: '', repsDelta: null,
+  };
   if (!lastEntry) return empty;
 
   // Anchor on the heaviest set. A lighter final set is a drop-off, and basing
@@ -103,21 +123,17 @@ export function suggestion(lastEntry, exercise, priorEntry = null) {
 
   const hit = earnedIncrease(lastEntry.sets, exercise.repRange, exercise.targetSets);
   const increment = exercise.increment == null ? DEFAULT_INCREMENT : exercise.increment;
-  const weight = hit ? anchor.weight + increment : anchor.weight;
 
-  // Rep-only progression at an unchanged load is still progressive overload,
-  // and rendering it as a plain "hold" reads as failure. Only comparable when
-  // the anchor weight matches — rep counts at different loads mean nothing.
+  // Null when the two sessions used different weights, so neither rep-trend
+  // verdict can fire on numbers that aren't comparable.
+  const delta = repsTrend(lastEntry, priorEntry);
+
   let verdict = 'hold';
-  if (hit) {
-    verdict = 'up';
-  } else if (priorEntry) {
-    const priorAnchor = bestSet(priorEntry.sets);
-    if (priorAnchor && priorAnchor.weight === anchor.weight
-        && totalReps(lastEntry.sets) > totalReps(priorEntry.sets)) {
-      verdict = 'building';
-    }
-  }
+  if (delta != null && delta < 0) verdict = 'fading';
+  else if (hit) verdict = 'up';
+  else if (delta != null && delta > 0) verdict = 'building';
+
+  const weight = verdict === 'up' ? anchor.weight + increment : anchor.weight;
 
   const reps = lastEntry.sets
     .filter(s => typeof s.reps === 'number' && !Number.isNaN(s.reps))
@@ -130,5 +146,6 @@ export function suggestion(lastEntry, exercise, priorEntry = null) {
     day: lastEntry.day || '',
     lastText: reps.length ? `${anchor.weight}kg × ${reps.join(', ')}` : `${anchor.weight}kg`,
     note: lastEntry.note || '',
+    repsDelta: delta,
   };
 }

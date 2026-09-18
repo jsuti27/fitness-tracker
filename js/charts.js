@@ -106,3 +106,62 @@ export function groupedBarChartSVG(rows, {
 
   return `<svg viewBox="0 0 ${width} ${height}" class="chart" preserveAspectRatio="none">${bars}${labels}</svg>`;
 }
+
+// One lift's progress over time. Unlike the charts above this one is labelled —
+// dates along the bottom, values up the side — because it is read on its own
+// rather than as a glance next to a number that already says what it means.
+//
+// Note it does NOT use preserveAspectRatio="none". The others stretch to fill
+// their box, which also stretches any text inside them; a chart carrying axis
+// labels has to keep its proportions so the labels stay legible.
+//
+// points: [{ label: '19 Aug', value: 500 }]
+export function progressionChartSVG(points, {
+  width = 320, height = 172, color = '#6366f1', textColor = DEFAULT_TEXT,
+  suffix = '', maxLabels = 4,
+} = {}) {
+  if (!points || points.length < 2) return placeholder(width, height, textColor);
+
+  const L = 38, R = 12, T = 16, B = 30;   // room for labels on two sides
+  const vs = points.map(p => p.value);
+  const lo = Math.min(...vs), hi = Math.max(...vs);
+  const pad = (hi - lo) * 0.12 || 1;
+  const minY = Math.max(0, lo - pad), maxY = hi + pad;
+
+  const px = i => scale(i, 0, points.length - 1, L, width - R);
+  const py = v => scale(v, minY, maxY, height - B, T);
+
+  const line = points.map((p, i) => `${i ? 'L' : 'M'}${px(i).toFixed(1)},${py(p.value).toFixed(1)}`).join(' ');
+  const area = `M${px(0).toFixed(1)},${height - B} `
+    + points.map((p, i) => `L${px(i).toFixed(1)},${py(p.value).toFixed(1)}`).join(' ')
+    + ` L${px(points.length - 1).toFixed(1)},${height - B} Z`;
+
+  // The newest session is the one you're deciding from, so it gets a bigger dot.
+  const dots = points.map((p, i) => {
+    const last = i === points.length - 1;
+    return `<circle cx="${px(i).toFixed(1)}" cy="${py(p.value).toFixed(1)}" r="${last ? 4 : 2.5}" fill="${color}"${last ? ' stroke="#fff" stroke-width="1.5"' : ''} />`;
+  }).join('');
+
+  // Only the top and bottom of the range are labelled. Intermediate gridlines
+  // on a chart this small cost more in clutter than they return in precision.
+  const yLabels = [[hi, py(hi)], [lo, py(lo)]].map(([v, y]) =>
+    `<text x="${L - 6}" y="${(y + 3).toFixed(1)}" text-anchor="end" fill="${textColor}" font-size="10">${Math.round(v)}${suffix}</text>`
+  ).join('');
+
+  // Thin the date labels rather than overlap them — first and last always show.
+  const step = Math.max(1, Math.ceil(points.length / maxLabels));
+  const xLabels = points.map((p, i) => {
+    if (i !== 0 && i !== points.length - 1 && i % step !== 0) return '';
+    const anchor = i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle';
+    return `<text x="${px(i).toFixed(1)}" y="${height - 10}" text-anchor="${anchor}" fill="${textColor}" font-size="10">${p.label}</text>`;
+  }).join('');
+
+  const baseline = `<line x1="${L}" y1="${height - B}" x2="${width - R}" y2="${height - B}" stroke="${textColor}" stroke-width="0.5" opacity="0.35" />`;
+
+  return `<svg viewBox="0 0 ${width} ${height}" class="chart chart-auto">`
+    + `<path d="${area}" fill="${color}" opacity="0.14" />`
+    + baseline + yLabels + xLabels
+    + `<path d="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" />`
+    + dots
+    + `</svg>`;
+}

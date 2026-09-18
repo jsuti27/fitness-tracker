@@ -16,6 +16,7 @@ const KEYS = {
   syncError: 'ht.syncError',
   dayTypes: 'ht.dayTypes',
   programDirty: 'ht.programDirty',
+  rest: 'ht.rest',
 };
 
 // A session is identified by the day it was done and which day type it was.
@@ -49,7 +50,7 @@ export function createStorage(backend) {
       backend.setItem(KEYS.program, JSON.stringify(program));
       this.markProgramDirty();
     },
-    addExercise(day, { name, targetSets, repRange, increment }) {
+    addExercise(day, { name, targetSets, repRange, increment, restSeconds }) {
       const program = this.loadProgram();
       const exercise = {
         id: newExerciseId(),
@@ -57,6 +58,10 @@ export function createStorage(backend) {
         targetSets: Number(targetSets) || 1,
         repRange: String(repRange),
         increment: increment == null ? DEFAULT_INCREMENT : Number(increment),
+        // Left unset on purpose when not given. rest-timer.js then derives it
+        // from the rep range, so existing programs need no migration and the
+        // default keeps tracking the rep range if that is later edited.
+        ...(restSeconds == null ? {} : { restSeconds: Number(restSeconds) }),
       };
       program[day] = [...(program[day] || []), exercise];
       this.saveProgram(program);
@@ -204,6 +209,19 @@ export function createStorage(backend) {
       }
       this.saveSessions(sessions);
       return this.loadSessions();
+    },
+
+    // --- Rest timer ---
+    // Only the moment the rest ends, so closing the app mid-set and reopening
+    // resumes the same countdown. Deliberately outside the export/import
+    // backup: a half-finished rest is worth nothing on a new phone.
+    loadRest() {
+      const raw = backend.getItem(KEYS.rest);
+      return raw ? JSON.parse(raw) : null;
+    },
+    saveRest(rest) {
+      if (rest == null) backend.removeItem(KEYS.rest);
+      else backend.setItem(KEYS.rest, JSON.stringify(rest));
     },
 
     // --- Google Sheet sync ---

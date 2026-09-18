@@ -22,6 +22,15 @@
 
     <!-- ============ TRAIN ============ -->
     <section id="train" class="screen active">
+      <!-- Pinned above the fold while a rest is running: at the gym the phone
+           is at arm's length on a bench, and a countdown you have to scroll to
+           find is one you stop using. -->
+      <div id="rest-bar" class="rest-bar" hidden>
+        <span class="rest-clock" id="rest-clock">0:00</span>
+        <span class="rest-for" id="rest-for"></span>
+        <button type="button" class="rest-skip" id="rest-skip">skip</button>
+      </div>
+
       <div class="card training">
         <div class="chart-head"><h2>Log a session</h2><span class="pill t-bg" id="train-week">Week —</span></div>
         <label class="date-field">Date <input type="date" id="session-date" /></label>
@@ -39,6 +48,7 @@
       <div class="card">
         <h2>Progression</h2>
         <select id="prog-select" class="select"></select>
+        <p class="chart-label">Work per session — every set's weight × reps</p>
         <div id="chart-prog" class="chart-wrap"></div>
         <div id="prog-history" class="prog-history"></div>
       </div>
@@ -137,7 +147,7 @@
         <p id="reset-note" class="note"></p>
       </div>
 
-      <p class="subtle center foot">Gym Log · <span id="app-version">health-tracker-v15</span> · on-device</p>
+      <p class="subtle center foot">Gym Log · <span id="app-version">health-tracker-v16</span> · on-device</p>
     </section>
   </main>
 

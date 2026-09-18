@@ -1,13 +1,14 @@
 import { createStorage } from './storage.js';
 
 import { lastEntriesFor, suggestion, describeGap } from './progression.js';
+import { createRestTimer, restFor, formatRest } from './rest-timer.js';
 import { createSync } from './sync.js';
 import { createProgramScreen } from './program-screen.js';
 import {
-  todayISO, formatDate, daysBetween,
+  todayISO, formatDate, shortDate, daysBetween,
   programWeek, sessionVolume, exerciseProgression, bestSet, weeklyVolume,
 } from './calculations.js';
-import { lineChartSVG, groupedBarChartSVG } from './charts.js';
+import { lineChartSVG, groupedBarChartSVG, progressionChartSVG } from './charts.js';
 import { $, setText, flash, chartColors, dayColors, escapeHtml, escapeAttr, cssEscape } from './dom.js';
 
 const store = createStorage(localStorage);
@@ -80,7 +81,13 @@ function renderSessionForm() {
     const logged = saved && (saved.exercises || [])
       .find(e => e.exerciseId === ex.id || e.name === ex.name);
 
+    // "fading" earns a reason next to it — a down arrow with no explanation is
+    // the kind of thing you argue with instead of acting on.
+    const fade = sug.repsDelta == null ? ''
+      : ` <span class="fade-why">${Math.abs(sug.repsDelta)} reps down on the same weight</span>`;
+
     const badge = sug.verdict === 'up' ? '<span class="badge-up">↑ go up</span>'
+      : sug.verdict === 'fading' ? `<span class="badge-fading">↓ fading</span>${fade}`
       : sug.verdict === 'building' ? '<span class="badge-building">↗ building</span>'
       : sug.verdict === 'hold' ? '<span class="badge-hold">= hold</span>' : '';
 
@@ -193,6 +200,12 @@ function wireSessionForm() {
     // Once touched, a suggested weight becomes a real entry.
     el.classList.remove('suggested');
     scheduleSave();
+
+    // A rep count is the one entry that means "that set is done" — weights get
+    // typed before a set and notes after it, so neither marks the boundary.
+    // Debounced because "12" arrives as "1" then "12", and restarting the rest
+    // on the first keystroke would cost you the seconds spent typing.
+    if (el.dataset.field === 'reps' && el.value !== '') startRestSoon(el.dataset.exId);
   });
 
   form.addEventListener('click', e => {
@@ -204,6 +217,69 @@ function wireSessionForm() {
       if (!ta.classList.contains('hidden')) ta.focus();
     }
   });
+}
+
+// ============================================================ REST TIMER
+
+// A short two-tone chime. Built on demand rather than at load, because a phone
+// browser won't let audio exist before the page has been touched — and by the
+// time a rest starts, you have definitely touched it.
+function beep() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    [0, 0.18].forEach((offset, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = i ? 880 : 660;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + offset);
+      gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + offset + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + offset + 0.16);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(ctx.currentTime + offset);
+      osc.stop(ctx.currentTime + offset + 0.18);
+    });
+    setTimeout(() => ctx.close(), 800);
+  } catch { /* a silent timer still counts down */ }
+}
+
+const restTimer = createRestTimer({
+  load: () => store.loadRest(),
+  save: rest => store.saveRest(rest),
+  onTick: (left, label) => {
+    $('rest-bar').hidden = false;
+    setText('rest-clock', formatRest(left));
+    setText('rest-for', label);
+    // Under 10 seconds the bar changes colour — at the gym it's in peripheral
+    // vision, and a colour change registers where a digit doesn't.
+    $('rest-bar').classList.toggle('ending', left <= 10);
+  },
+  onDone: () => {
+    $('rest-bar').hidden = true;
+    $('rest-bar').classList.remove('ending');
+    beep();
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  },
+});
+
+let restStartTimer = null;
+function startRestSoon(exId) {
+  clearTimeout(restStartTimer);
+  restStartTimer = setTimeout(() => {
+    const ex = (store.loadProgram()[selectedDay] || []).find(e => e.id === exId);
+    if (ex) restTimer.start(restFor(ex), ex.name);
+  }, 700);
+}
+
+function wireRestBar() {
+  $('rest-skip').addEventListener('click', () => {
+    restTimer.cancel();
+    $('rest-bar').hidden = true;
+    $('rest-bar').classList.remove('ending');
+  });
+  // Resumes a rest that was running when the app was last closed.
+  restTimer.resume();
 }
 
 // One colour per day type, cycling if the split has more days than colours.
@@ -222,31 +298,45 @@ function renderVolumeChart() {
   ).join('');
 }
 
-function allExerciseNames() {
+// Unique by name — an exercise repeated across days is one line on the chart.
+// The id rides along so a renamed lift can still find its own history.
+function allExercises() {
   const program = store.loadProgram();
-  const names = [];
+  const list = [];
   store.loadDayTypes().forEach(day => (program[day] || []).forEach(ex => {
-    if (!names.includes(ex.name)) names.push(ex.name);
+    if (!list.some(e => e.name === ex.name)) list.push({ id: ex.id, name: ex.name });
   }));
-  return names;
+  return list;
 }
 
 function renderProgressionPicker() {
   const sel = $('prog-select');
-  const names = allExerciseNames();
-  const current = sel.value && names.includes(sel.value) ? sel.value : names[0];
-  sel.innerHTML = names.map(n => `<option value="${escapeAttr(n)}"${n === current ? ' selected' : ''}>${escapeHtml(n)}</option>`).join('');
+  const list = allExercises();
+  const current = list.some(e => e.name === sel.value) ? sel.value : (list[0] || {}).name;
+
+  sel.innerHTML = list.map(e =>
+    `<option value="${escapeAttr(e.name)}" data-id="${escapeAttr(e.id || '')}"${e.name === current ? ' selected' : ''}>${escapeHtml(e.name)}</option>`
+  ).join('');
   sel.onchange = renderProgressionChart;
   renderProgressionChart();
 }
 
 function renderProgressionChart() {
-  const name = $('prog-select').value;
+  const sel = $('prog-select');
+  const name = sel.value;
+  const id = sel.selectedOptions[0] ? sel.selectedOptions[0].dataset.id : '';
   const sessions = store.loadSessions();
-  const prog = exerciseProgression(sessions, name);
+  const prog = exerciseProgression(sessions, name, id || null);
   const C = chartColors();
-  const points = prog.map((p, i) => ({ x: i, y: p.topWeight }));
-  $('chart-prog').innerHTML = lineChartSVG(points, { color: C.training, textColor: C.text });
+
+  // Work done — every set's weight x reps, per session. Top weight on its own
+  // draws a flat line for as long as a lift sits at one load, which is exactly
+  // when you need to know whether it's still moving. This number rises if you
+  // add weight or add reps, so a stall shows up as a stall and nothing else.
+  $('chart-prog').innerHTML = progressionChartSVG(
+    prog.map(p => ({ label: shortDate(p.date), value: p.volume })),
+    { color: C.training, textColor: C.text, suffix: 'kg' }
+  );
 
   if (prog.length === 0) {
     $('prog-history').innerHTML = `<div class="empty">No history for this lift yet.</div>`;
@@ -467,6 +557,7 @@ function wireNav() {
 // ============================================================ INIT
 wireTheme();
 wireTrain();
+wireRestBar();
 programScreen.wire();
 wireSettings();
 wireNav();

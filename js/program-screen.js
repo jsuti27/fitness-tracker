@@ -6,6 +6,7 @@
 // history and charts still read correctly.
 
 import { parseRepRange, DEFAULT_INCREMENT } from './program.js';
+import { restFor } from './rest-timer.js';
 import { $, setText, flash, escapeAttr, escapeHtml, dayColors } from './dom.js';
 
 export function createProgramScreen({ store, onProgramChange }) {
@@ -43,6 +44,7 @@ export function createProgramScreen({ store, onProgramChange }) {
           <label>Sets <input type="number" inputmode="numeric" min="1" max="10" value="${ex.targetSets}" data-field="targetSets" /></label>
           <label>Reps <input type="text" value="${escapeAttr(ex.repRange)}" data-field="repRange" placeholder="8-10" /></label>
           <label>+kg <input type="number" inputmode="decimal" step="0.5" value="${ex.increment ?? DEFAULT_INCREMENT}" data-field="increment" /></label>
+          <label>Rest <input type="number" inputmode="numeric" step="15" min="15" max="600" value="${restFor(ex)}" data-field="restSeconds" /></label>
           <span class="pe-actions">
             <button type="button" class="pe-btn" data-move="-1" ${i === 0 ? 'disabled' : ''} title="Move up">▲</button>
             <button type="button" class="pe-btn" data-move="1" ${i === list.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
@@ -156,6 +158,10 @@ export function createProgramScreen({ store, onProgramChange }) {
       } else if (field === 'increment') {
         value = Number(value);
         if (!Number.isFinite(value) || value <= 0) value = DEFAULT_INCREMENT;
+      } else if (field === 'restSeconds') {
+        // Clamped rather than rejected: a mistyped rest is worth correcting
+        // silently, not worth interrupting someone mid-gym to argue about.
+        value = Math.max(15, Math.min(600, Number(value) || 0));
       } else if (field === 'repRange') {
         if (!parseRepRange(value)) {
           flash('program-note', 'Rep range should look like 8-10 or 12.', true);
