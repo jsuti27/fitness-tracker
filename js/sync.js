@@ -8,6 +8,8 @@
 
 import { sessionKey } from './storage.js';
 import { setsAllInRange } from './progression.js';
+import { planRows } from './plan.js';
+import { todayISO } from './calculations.js';
 
 // Flatten the program into sheet rows. Carries the exercise id, which is what
 // makes an export/edit/import round-trip safe — reimporting with ids intact
@@ -140,6 +142,33 @@ export function createSync({ store, fetchImpl, pauseImpl }) {
     return true;
   }
 
+  // Same whole-tab approach as the program: a few rows a week, one writer.
+  // Status is derived from logged sessions, so this goes again whenever a
+  // session is saved too — a "today" row has to become "done" in the sheet.
+  async function sendPlan(settings) {
+    const rows = planRows(store.loadPlan(), store.loadSessions(), todayISO());
+    const res = await doFetch(settings.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      // `planRows`, not `rows`: a script that predates the Plan tab reads
+      // `rows` as set data, and would append these to the Sets tab as junk.
+      body: JSON.stringify({ secret: settings.secret, kind: 'plan', planRows: rows }),
+    });
+    if (!res) throw new Error('No response from the sheet');
+    if (res.ok === false) throw new Error(`Sheet returned HTTP ${res.status ?? '?'}`);
+    if (typeof res.text === 'function') {
+      // An old script without writePlan would treat this as a session and
+      // answer ok with nothing written; a new one answers {plan: n}.
+      let parsed = null;
+      try { parsed = JSON.parse((await res.text()).trim()); } catch { /* fall through */ }
+      if (parsed && parsed.ok === false) throw new Error(`Script said: ${parsed.error || 'rejected'}`);
+      if (parsed && parsed.plan === undefined) {
+        throw new Error('Plan not saved — update the Apps Script (see apps-script/README.md)');
+      }
+    }
+    return true;
+  }
+
   return {
     enqueue(date, day) {
       store.enqueueSync(sessionKey(date, day));
@@ -149,7 +178,11 @@ export function createSync({ store, fetchImpl, pauseImpl }) {
       const settings = store.loadSyncSettings();
       const queue = store.loadSyncQueue();
       const programDirty = store.loadProgramDirty();
-      if (!settings.url || !doFetch || (queue.length === 0 && !programDirty)) {
+      // Any session change can flip a planned day to done, so it dirties the
+      // plan as well — but only once there is a plan to send.
+      if (queue.length && Object.keys(store.loadPlan()).length) store.savePlan(store.loadPlan());
+      const planDirty = store.loadPlanDirty();
+      if (!settings.url || !doFetch || (queue.length === 0 && !programDirty && !planDirty)) {
         return { sent: 0, failed: 0 };
       }
 
@@ -157,6 +190,7 @@ export function createSync({ store, fetchImpl, pauseImpl }) {
       let sent = 0;
       let failed = 0;
       let lastError = '';
+      let planError = '';
       let first = true;
 
       // Program first — the Program tab is what makes the Sets tab readable.
@@ -170,6 +204,21 @@ export function createSync({ store, fetchImpl, pauseImpl }) {
         } catch (err) {
           failed += 1;
           lastError = err && err.message ? err.message : String(err);
+        }
+      }
+
+      if (planDirty) {
+        try {
+          if (!first) await pause(600);
+          first = false;
+          await sendPlan(settings);
+          store.clearPlanDirty();
+          sent += 1;
+        } catch (err) {
+          // Not counted in `failed`: that drives "will sync when online" on
+          // the Train screen, which would be wrong while your sets are going
+          // up fine. The reason still shows in Settings.
+          planError = err && err.message ? err.message : String(err);
         }
       }
 
@@ -192,8 +241,8 @@ export function createSync({ store, fetchImpl, pauseImpl }) {
         }
       }
       if (sent > 0) store.saveSyncedAt(new Date().toISOString());
-      store.saveSyncError(failed ? lastError : '');
-      return { sent, failed, error: lastError };
+      store.saveSyncError(failed ? lastError : planError);
+      return { sent, failed, error: lastError || planError };
     },
   };
 }

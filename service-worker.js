@@ -1,5 +1,5 @@
 // Caches the app shell so Health Tracker works fully offline after first load.
-const CACHE = 'health-tracker-v17';
+const CACHE = 'health-tracker-v18';
 const ASSETS = [
   './',
   './index.html',
@@ -14,6 +14,8 @@ const ASSETS = [
   './js/progression.js',
   './js/rest-timer.js',
   './js/sync.js',
+  './js/plan.js',
+  './js/plan-screen.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',

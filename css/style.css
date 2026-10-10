@@ -384,3 +384,62 @@ button { cursor: pointer; font-family: inherit; }
    sessions can read "20 reps" and sit at three different heights, and without
    this the chart looks like it disagrees with the list under it. */
 .prog-work { color: var(--training); }
+
+/* --- Plan (weekly planner) --- */
+.week-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.week-title {
+  flex: 1; background: none; border: 0; color: var(--ink); text-align: center;
+  display: flex; flex-direction: column; align-items: center; font-weight: 800; font-size: 1.05rem;
+}
+.plan-day {
+  display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: start;
+  padding: 10px 0; border-top: 1px solid var(--line);
+}
+.plan-day:first-child { border-top: 0; }
+.plan-day.is-today .plan-date b { color: var(--brand); }
+.plan-date { display: flex; flex-direction: column; align-items: center; line-height: 1.1; padding-top: 6px; }
+.plan-date b { font-size: .78rem; color: var(--ink-2); }
+.plan-date span { font-size: 1.15rem; font-weight: 800; }
+.plan-main { min-width: 0; }
+.plan-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 40px; }
+.plan-select {
+  width: auto; flex: 1; min-width: 0; max-width: 200px; margin: 0; padding: 9px 12px;
+  border-left: 5px solid var(--day-accent); font-weight: 700;
+}
+.plan-add { min-height: 40px; }
+.plan-pill {
+  display: inline-block; padding: 8px 12px; border-radius: 10px; font-weight: 700; font-size: .9rem;
+  background: var(--well); border-left: 5px solid var(--day-accent);
+}
+.plan-status { display: flex; flex-direction: column; align-items: center; font-size: 1.1rem; padding-top: 6px; min-width: 52px; }
+.plan-status span { font-size: .68rem; font-weight: 700; color: var(--muted); }
+.status-missed .plan-status span { color: var(--alert); }
+.status-done .plan-status span { color: var(--brand); }
+.status-rest .plan-date { opacity: .55; }
+
+.miss-why { margin-top: 8px; }
+.reason-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.rchip {
+  background: var(--well); border: 1.5px solid transparent; color: var(--ink-2);
+  border-radius: 999px; padding: 7px 12px; font-size: .8rem; font-weight: 600; min-height: 36px;
+}
+.rchip.active { border-color: var(--alert); color: var(--alert); background: var(--card); }
+.rchip.static { display: inline-block; min-height: 0; padding: 4px 10px; margin: 2px 2px 0 0; }
+.miss-note { padding: 9px 12px; font-size: .9rem; }
+
+.plan-lock { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.plan-lock:empty { display: none; }
+.lock-on { font-weight: 800; color: var(--brand); }
+.small-btn { padding: 8px 12px; }
+
+.score-row { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.score-big { font-size: 1.45rem; font-weight: 800; letter-spacing: -0.02em; }
+.streak { text-align: right; }
+.week-bars { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin: 16px 0 12px; }
+.wbar { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.wbar span { font-size: .66rem; color: var(--muted); font-weight: 600; }
+.wbar.sel span { color: var(--ink); font-weight: 800; }
+.wbar-track { width: 100%; height: 56px; background: var(--well); border-radius: 8px; display: flex; align-items: flex-end; overflow: hidden; }
+.wbar-fill { width: 100%; background: var(--training); border-radius: 8px 8px 0 0; }
+.wbar-fill.full { background: var(--brand); }
+.reasons { line-height: 2; }

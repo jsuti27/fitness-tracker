@@ -11,8 +11,21 @@ export function daysBetween(aStr, bStr) {
   return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / MS_PER_DAY);
 }
 
-export function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+// The phone's local date. toISOString() is UTC, which in Melbourne filed any
+// session logged before ~10am under the previous day.
+export function todayISO(now = new Date()) {
+  return localISO(now);
+}
+
+export function localISO(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// "2026-10-08" + 3 -> "2026-10-11". UTC arithmetic so DST never skips a day.
+export function addDays(dateStr, n) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
 
 // Human-friendly date, e.g. "21 Sep 2026".

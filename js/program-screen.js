@@ -5,7 +5,9 @@
 // but leaves logged sessions intact — sessions carry the exercise name, so old
 // history and charts still read correctly.
 
-import { parseRepRange, DEFAULT_INCREMENT } from './program.js';
+import { parseRepRange, DEFAULT_INCREMENT, ULPPL_DAY_TYPES, ULPPL_PROGRAM } from './program.js';
+import { weekStart } from './plan.js';
+import { todayISO } from './calculations.js';
 import { restFor } from './rest-timer.js';
 import { $, setText, flash, escapeAttr, escapeHtml, dayColors } from './dom.js';
 
@@ -225,6 +227,24 @@ export function createProgramScreen({ store, onProgramChange }) {
       $('prog-import').value = '';
       programDay = null;
       flash('prog-import-note', `Loaded ${result.days} training days ✓`);
+      renderProgram();
+      onProgramChange();
+    });
+
+    $('ulppl-btn').addEventListener('click', () => {
+      if (!confirm('Switch to Upper / Lower / Push / Pull / Legs?\n\nThis replaces your exercise list. Every logged session is kept, and lifts you already do keep their history.')) return;
+
+      const result = store.importProgram(JSON.stringify({ dayTypes: ULPPL_DAY_TYPES, program: ULPPL_PROGRAM }));
+      if (!result.ok) { flash('ulppl-note', result.error, true); return; }
+
+      // A new block is a natural point to restart the week count, but it's
+      // your call — some people prefer one continuous count.
+      const monday = weekStart(todayISO());
+      if (confirm(`Start the week count again from Week 1 (Monday ${monday})?`)) {
+        store.saveWorkoutStart(monday);
+      }
+      programDay = null;
+      flash('ulppl-note', 'Loaded 5 training days ✓');
       renderProgram();
       onProgramChange();
     });

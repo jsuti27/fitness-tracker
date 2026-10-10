@@ -12,6 +12,7 @@ Built around a coach-written Push/Pull/Legs program: log each set, and the app a
 |---|---|
 | **Today** | Log steps, weight, and macros. Live progress: protein hero bar, steps ring, calories, weight→goal, macro minis, step streak. |
 | **Train** | Pick Push/Pull/Legs → the whole day on one screen. Weight boxes open pre-filled with the next weight your coach's rule calls for, badged `↑ go up` or `= hold`, with last session's numbers and note above them. Autosaves as you type. Weekly volume chart + per-lift progression + recent sessions. |
+| **Plan** | Commit to the week's gym days (Mon–Sun). Tap **＋ Gym** and the next workout in your split fills in; **🔒 Lock in** to commit. Whether you went is read off what you log on Train — ✅ done, ❌ missed (pick a reason: Work, Tired, Sick, Social, Travel, Sore, Other, plus a note), ⭐ bonus. Shows % of planned days hit, a weeks-on-plan streak, the last 8 weeks and your top miss reasons. Syncs to a **Plan** tab in the Google Sheet. |
 | **Program** | Your exercise list, editable. Add, rename, reorder, delete per day; set target sets, rep range, and the weight increment for each lift. Program start date lives here too. |
 | **Settings** | Edit all targets, set up Google Sheet sync, **export/import** a backup file, erase all data. |
 
@@ -94,6 +95,13 @@ later edits correct the sheet instead of duplicating rows.
 
 ---
 
+## Upper / Lower / Push / Pull / Legs
+
+**Program → Load Upper/Lower/PPL (shoulder focus)** swaps in a 5-day split with shoulder work on every
+upper-body day (~22 direct delt sets a week, shoulders first on Upper and Push). Lifts you already do
+keep their id, so their history and next-weight suggestions carry straight over, and Push / Pull / Legs
+keep their logged sessions. Everything is editable on the Program tab afterwards.
+
 ## Back up your data
 
 Because everything is stored only on your device, use **Settings → Export data to file** every so often (saves a `.json`). To restore (new phone, cleared browser), use **Import data from file**.
@@ -112,6 +120,8 @@ health-tracker/
 │   ├── dom.js            Shared DOM helpers ($, flash, escaping, theme colours)
 │   ├── storage.js        Persistence (localStorage injected) + export/import
 │   ├── calculations.js   Pure math: calories, weight projection, volume, workout stats
+│   ├── plan.js           Weekly planner logic: week dates, done/missed status, score, streak
+│   ├── plan-screen.js    The Plan screen
 │   ├── progression.js    The coach's go-up / hold rule
 │   ├── sync.js           Session → sheet rows, offline queue, POST to Apps Script
 │   ├── charts.js         Hand-rolled SVG line/bar charts (zero dependencies)
@@ -129,5 +139,5 @@ health-tracker/
 
 - **No dependencies.** Charts are SVG generated in `charts.js`, so the app installs and runs fully offline with nothing to `npm install`.
 - **Testable logic.** `storage.js` takes its backend (localStorage / a fake) by injection, so all logic is unit-tested in `node --test`.
-- **Data model** (all in `localStorage`): `ht.targets`, `ht.days`, `ht.program`, `ht.sessions`, `ht.workoutStart`, `ht.syncSettings`, `ht.syncQueue`.
+- **Data model** (all in `localStorage`): `ht.targets`, `ht.days`, `ht.program`, `ht.sessions`, `ht.workoutStart`, `ht.syncSettings`, `ht.syncQueue`, `ht.plan`, `ht.planLocks`.
 - **Stable exercise ids.** Sessions record an `exerciseId`, so renaming a lift keeps its history, charts, and progression suggestions. Name-matching survives only as a fallback for older sessions.
