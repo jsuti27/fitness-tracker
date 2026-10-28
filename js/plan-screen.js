@@ -7,6 +7,7 @@
 import {
   MISS_REASONS, WEEKDAYS, weekStart, weekSummary, sessionsByDate,
   commitmentStreak, recentWeeks, reasonTally, suggestDay,
+  heatmapWeeks, attendanceStats, tileStats,
 } from './plan.js';
 import { todayISO, addDays, shortDate } from './calculations.js';
 import { $, flash, escapeAttr, escapeHtml, dayColors } from './dom.js';
@@ -102,6 +103,82 @@ export function createPlanScreen({ store, onPlanChange }) {
     }).join('');
 
     renderScore(plan, byDate, today, week);
+    renderTiles(sessions, today);
+    renderHeatmap(sessions, plan, today, days, colorOf);
+  }
+
+  // Big numbers first: the one that answers "am I slacking?" leads.
+  function renderTiles(sessions, today) {
+    const t = tileStats(sessions, today);
+    const tile = (label, value, sub = '') =>
+      `<div class="tile"><div class="card-eyebrow">${label}</div><div class="tile-value">${value}${sub ? `<small>${sub}</small>` : ''}</div></div>`;
+    $('plan-tiles').innerHTML =
+      tile('Last 4 weeks', t.last4, ' / wk')
+      + tile('This month', t.thisMonth, ` day${t.thisMonth === 1 ? '' : 's'}`)
+      + tile('Gym days', t.days)
+      + tile('Lifted', t.lifted.toLocaleString('en-AU'), ' kg');
+  }
+
+  // Every gym day of the last 26 weeks at a glance, coloured by which day of
+  // the split it was — so a gap shows up as a gap, and a neglected day type
+  // shows up as a colour that's missing.
+  function renderHeatmap(sessions, plan, today, days, colorOf) {
+    const weeks = heatmapWeeks(sessions, plan, today, 26);
+    const stats = attendanceStats(sessions, today);
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // A label over the first week column of each month.
+    let lastMonth = null;
+    const monthRow = weeks.map(week => {
+      const m = Number(week[0].date.slice(5, 7)) - 1;
+      const label = m !== lastMonth ? MONTHS[m] : '';
+      lastMonth = m;
+      return `<span>${label}</span>`;
+    }).join('');
+
+    const fill = logged => {
+      if (!logged.length) return '';
+      const cs = logged.map(colorOf);
+      // Two splits in one day: half each, cut on the diagonal.
+      return cs.length === 1
+        ? `background:${cs[0]}`
+        : `background:linear-gradient(135deg, ${cs[0]} 50%, ${cs[1]} 50%)`;
+    };
+
+    const cells = weeks.map(week => week.map(d => {
+      const cls = ['hm-cell', d.logged.length ? 'on' : '', d.missed ? 'missed' : '',
+        d.future ? 'future' : '', d.today ? 'today' : ''].filter(Boolean).join(' ');
+      return `<button type="button" class="${cls}" style="${fill(d.logged)}" data-date="${d.date}"
+        data-what="${escapeAttr(d.logged.join(' + '))}" data-sets="${d.sets}" data-missed="${d.missed ? 1 : 0}"
+        aria-label="${d.date}"></button>`;
+    }).join('')).join('');
+
+    const summary = !stats ? 'No sessions logged yet.' : [
+      `${stats.days} gym day${stats.days === 1 ? '' : 's'} in ${stats.weeks} week${stats.weeks === 1 ? '' : 's'}`,
+      `${stats.perWeek} / week`,
+      stats.gap.days >= 3
+        ? `${stats.gap.ongoing ? 'current gap' : 'longest gap'} ${stats.gap.days} days (${shortDate(stats.gap.from)}–${shortDate(stats.gap.to)})`
+        : '',
+    ].filter(Boolean).join(' · ');
+
+    const perDay = stats ? days.map(d => `${escapeHtml(d)}: ${stats.perDay[d] || 0}`).join(' · ') : '';
+
+    $('plan-heatmap').innerHTML = `
+      <div class="chart-head"><h2>Gym days</h2><span class="subtle">last 26 weeks</span></div>
+      <div class="hm">
+        <div class="hm-months">${monthRow}</div>
+        <div class="hm-body">
+          <div class="hm-days"><span>M</span><span></span><span>W</span><span></span><span>F</span><span></span><span>S</span></div>
+          <div class="hm-grid">${cells}</div>
+        </div>
+      </div>
+      <p class="hm-detail subtle" id="hm-detail">Tap a square to see that day.</p>
+      <div class="legend">
+        ${days.map(d => `<span><i class="dot" style="background:${colorOf(d)}"></i>${escapeHtml(d)}</span>`).join('')}
+        <span><i class="dot dot-missed"></i>Missed plan</span>
+      </div>
+      <p class="hm-summary">${summary}</p>
+      ${perDay ? `<p class="subtle">${perDay}</p>` : ''}`;
   }
 
   function renderScore(plan, byDate, today, viewed) {
@@ -154,6 +231,17 @@ export function createPlanScreen({ store, onPlanChange }) {
     $('plan-prev').addEventListener('click', () => { viewStart = addDays(viewStart, -7); render(); });
     $('plan-next').addEventListener('click', () => { viewStart = addDays(viewStart, 7); render(); });
     $('plan-today').addEventListener('click', () => { viewStart = weekStart(todayISO()); render(); });
+
+    $('plan-heatmap').addEventListener('click', e => {
+      const cell = e.target.closest('.hm-cell');
+      if (!cell) return;
+      const [y, m, d] = cell.dataset.date.split('-').map(Number);
+      const wd = WEEKDAYS[(new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7];
+      const what = cell.dataset.what
+        ? `${cell.dataset.what} · ${cell.dataset.sets} sets`
+        : cell.dataset.missed === '1' ? 'Planned — missed' : 'Rest day';
+      $('hm-detail').textContent = `${wd} ${shortDate(cell.dataset.date)} · ${what}`;
+    });
 
     $('plan-lock').addEventListener('click', e => {
       const btn = e.target.closest('button');

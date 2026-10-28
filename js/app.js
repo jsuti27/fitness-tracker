@@ -5,6 +5,8 @@ import { createRestTimer, restFor, formatRest } from './rest-timer.js';
 import { createSync } from './sync.js';
 import { createProgramScreen } from './program-screen.js';
 import { createPlanScreen } from './plan-screen.js';
+import { stallFor } from './stalls.js';
+import { attachChartTip } from './chart-tip.js';
 import {
   todayISO, formatDate, shortDate, daysBetween,
   programWeek, sessionSetCount, exerciseProgression, bestSet, weeklyVolume,
@@ -60,6 +62,7 @@ function renderTrain() {
   ).join('');
 
   renderSessionForm();
+  renderStalls();
   renderVolumeChart();
   renderProgressionPicker();
   renderRecentSessions();
@@ -82,14 +85,24 @@ function renderSessionForm() {
     // Two entries: the last one to suggest from, and the one before it so
     // rep-only progress at the same weight can be told apart from a stall.
     const history = lastEntriesFor(sessions, ex.id, ex.name, 2);
-    const sug = suggestion(history.at(-1) || null, ex, history.length > 1 ? history.at(-2) : null);
+    let sug = suggestion(history.at(-1) || null, ex, history.length > 1 ? history.at(-2) : null);
+
+    // Judged on history before the day being logged, so typing today's sets
+    // doesn't flip the badge mid-workout.
+    const stall = stallFor(sessions.filter(s => s.date < sessionDate), ex);
+    // A lift stuck for 3+ sessions despite earning the jump shouldn't be held
+    // back again by a one-session rep wobble — that's how it got stuck. The
+    // stall verdict wins over "fading", so the box and the tip agree.
+    if (stall && stall.kind === 'earned' && sug.verdict === 'fading') {
+      sug = { ...sug, verdict: 'up', weight: stall.target, repsDelta: null };
+    }
     const logged = saved && (saved.exercises || [])
       .find(e => e.exerciseId === ex.id || e.name === ex.name);
 
     // "fading" earns a reason next to it — a down arrow with no explanation is
     // the kind of thing you argue with instead of acting on.
     const fade = sug.repsDelta == null ? ''
-      : ` <span class="fade-why">${Math.abs(sug.repsDelta)} reps down on the same weight</span>`;
+      : ` <span class="fade-why">${Math.abs(sug.repsDelta)} rep${Math.abs(sug.repsDelta) === 1 ? '' : 's'} down on the same weight</span>`;
 
     const badge = sug.verdict === 'up' ? '<span class="badge-up">↑ go up</span>'
       : sug.verdict === 'fading' ? `<span class="badge-fading">↓ fading</span>${fade}`
@@ -110,6 +123,10 @@ function renderSessionForm() {
 
     const lastNote = sug.note
       ? `<div class="last-note">📝 ${escapeHtml(sug.note)}</div>` : '';
+
+    const stallLine = stall
+      ? `<div class="stall-line"><span class="badge-stall">⛔ stalled · ${stall.sinceBest}</span> ${escapeHtml(stall.tip)}</div>`
+      : '';
 
     const rows = Array.from({ length: ex.targetSets }, (_, si) => {
       const set = logged && logged.sets ? logged.sets[si] : null;
@@ -136,6 +153,7 @@ function renderSessionForm() {
           <span class="exercise-target">${ex.targetSets} × ${escapeHtml(ex.repRange)}</span>
         </div>
         ${lastLine}
+        ${stallLine}
         ${lastNote}
         <div class="set-row set-head"><span class="set-no">#</span><span>Weight</span><span>Reps</span></div>
         ${rows}
@@ -192,6 +210,7 @@ function saveSessionFromForm() {
     flushSync();
   }
   setText('session-status', result.length ? 'Saved ✓' : '');
+  renderStalls();
   renderVolumeChart();
   renderRecentSessions();
 }
@@ -289,6 +308,34 @@ function wireRestBar() {
 
 // One colour per day type, cycling if the split has more days than colours.
 
+// Every lift in the current program that hasn't set a new best in its last 3
+// sessions, longest-stuck first, each with the one next step that fits it.
+function renderStalls() {
+  const program = store.loadProgram();
+  const sessions = store.loadSessions();
+  const seen = new Set();
+  const stalls = [];
+  store.loadDayTypes().forEach(day => (program[day] || []).forEach(ex => {
+    if (seen.has(ex.id)) return;
+    seen.add(ex.id);
+    const st = stallFor(sessions, ex);
+    if (st) stalls.push({ ex, st });
+  }));
+  stalls.sort((a, b) => b.st.sinceBest - a.st.sinceBest);
+
+  $('stalls').innerHTML = stalls.length
+    ? stalls.map(({ ex, st }) => `
+      <div class="stall-item">
+        <div class="stall-head">
+          <span class="exercise-name">${escapeHtml(ex.name)}</span>
+          <span class="badge-stall">${st.sinceBest} sessions</span>
+        </div>
+        <div class="session-meta">Last new best ${formatDate(st.bestDate)}</div>
+        <div class="stall-tip">💡 ${escapeHtml(st.tip)}</div>
+      </div>`).join('')
+    : '<div class="empty">No stalled lifts 🎉 Everything set a new best recently.</div>';
+}
+
 function renderVolumeChart() {
   const days = store.loadDayTypes();
   const colors = dayColors(days);
@@ -297,6 +344,7 @@ function renderVolumeChart() {
     weeklyVolume(store.loadSessions(), days),
     { series: days, colors, textColor: chartColors().text }
   );
+  attachChartTip($('chart-volume'));
 
   $('volume-legend').innerHTML = days.map((d, i) =>
     `<span><i class="dot" style="background:${colors[i]}"></i>${escapeHtml(d)}</span>`
@@ -339,9 +387,14 @@ function renderProgressionChart() {
   // when you need to know whether it's still moving. This number rises if you
   // add weight or add reps, so a stall shows up as a stall and nothing else.
   $('chart-prog').innerHTML = progressionChartSVG(
-    prog.map(p => ({ label: shortDate(p.date), value: p.volume })),
+    prog.map(p => ({
+      label: shortDate(p.date),
+      value: p.volume,
+      tip: `${shortDate(p.date)} · best ${p.best.weight}kg × ${p.best.reps} · ${Math.round(p.volume).toLocaleString('en-AU')}kg work`,
+    })),
     { color: C.training, textColor: C.text, suffix: 'kg' }
   );
+  attachChartTip($('chart-prog'));
 
   if (prog.length === 0) {
     $('prog-history').innerHTML = `<div class="empty">No history for this lift yet.</div>`;

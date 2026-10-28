@@ -156,3 +156,85 @@ export function planRows(plan, sessions, today) {
     };
   });
 }
+
+// --- Heatmap -------------------------------------------------------------
+
+// The last `weeks` weeks as columns (oldest first), each 7 days Mon -> Sun.
+// A day carries what was logged and whether it was a planned day you missed.
+// Days after today are kept (so the grid stays rectangular) but flagged future.
+export function heatmapWeeks(sessions, plan, today, weeks = 26) {
+  const byDate = sessionsByDate(sessions);
+  const sets = new Map();
+  for (const s of sessions || []) {
+    const n = (s.exercises || []).reduce((sum, e) =>
+      sum + (e.sets || []).filter(x => x.weight != null || x.reps != null).length, 0);
+    sets.set(s.date, (sets.get(s.date) || 0) + n);
+  }
+  const last = weekStart(today);
+  return Array.from({ length: weeks }, (_, i) => {
+    const start = addDays(last, -7 * (weeks - 1 - i));
+    return weekDates(start).map(date => {
+      const logged = byDate.get(date) || [];
+      const entry = (plan || {})[date] || null;
+      return {
+        date,
+        logged,
+        sets: sets.get(date) || 0,
+        missed: dayStatus(date, entry, logged, today) === 'missed',
+        future: date > today,
+        today: date === today,
+      };
+    });
+  });
+}
+
+// Headline numbers for the heatmap, counted from the first logged session (so
+// weeks before you started don't drag the average down).
+export function attendanceStats(sessions, today) {
+  const dates = [...new Set((sessions || []).map(s => s.date).filter(d => d && d <= today))].sort();
+  if (!dates.length) return null;
+
+  const perDay = {};
+  for (const s of sessions) if (s.date <= today) perDay[s.day] = (perDay[s.day] || 0) + 1;
+
+  let gap = { days: 0, from: null, to: null };
+  for (let i = 1; i < dates.length; i++) {
+    const days = daysBetween(dates[i - 1], dates[i]) - 1;
+    if (days > gap.days) gap = { days, from: addDays(dates[i - 1], 1), to: addDays(dates[i], -1) };
+  }
+  // The stretch since your last session counts too — it's the one that matters.
+  const sinceLast = daysBetween(dates[dates.length - 1], today);
+  if (sinceLast > gap.days) gap = { days: sinceLast, from: addDays(dates[dates.length - 1], 1), to: today, ongoing: true };
+
+  const weeks = Math.max(1, Math.ceil((daysBetween(weekStart(dates[0]), today) + 1) / 7));
+  return {
+    days: dates.length,
+    sessions: (sessions || []).filter(s => s.date <= today).length,
+    weeks,
+    perWeek: Math.round((dates.length / weeks) * 10) / 10,
+    gap,
+    perDay,
+  };
+}
+
+// The four headline numbers at the top of the Plan tab.
+//   last4     gym days per week over the last 28 days — the "am I slacking?" number
+//   thisMonth gym days so far this calendar month
+//   days      gym days since the first logged session
+//   lifted    kg moved: every logged set's weight x reps
+export function tileStats(sessions, today) {
+  const past = (sessions || []).filter(s => s.date && s.date <= today);
+  const days = new Set(past.map(s => s.date));
+  const from = addDays(today, -27);
+  const last4 = [...days].filter(d => d >= from).length;
+  let lifted = 0;
+  for (const s of past) for (const e of s.exercises || []) for (const set of e.sets || []) {
+    if (typeof set.weight === 'number' && typeof set.reps === 'number') lifted += set.weight * set.reps;
+  }
+  return {
+    last4: Math.round((last4 / 4) * 10) / 10,
+    thisMonth: [...days].filter(d => d.slice(0, 7) === today.slice(0, 7)).length,
+    days: days.size,
+    lifted: Math.round(lifted),
+  };
+}
