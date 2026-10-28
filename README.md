@@ -12,7 +12,7 @@ Built around a coach-written Push/Pull/Legs program: log each set, and the app a
 |---|---|
 | **Today** | Log steps, weight, and macros. Live progress: protein hero bar, steps ring, calories, weight→goal, macro minis, step streak. |
 | **Train** | Pick Push/Pull/Legs → the whole day on one screen. Weight boxes open pre-filled with the next weight your coach's rule calls for, badged `↑ go up` or `= hold`, with last session's numbers and note above them. Autosaves as you type. Weekly volume chart + per-lift progression + recent sessions. |
-| **Plan** | Commit to the week's gym days (Mon–Sun). Tap **＋ Gym** and the next workout in your split fills in; **🔒 Lock in** to commit. Whether you went is read off what you log on Train — ✅ done, ❌ missed (pick a reason: Work, Tired, Sick, Social, Travel, Sore, Other, plus a note), ⭐ bonus. Shows % of planned days hit, a weeks-on-plan streak, the last 8 weeks and your top miss reasons. Syncs to a **Plan** tab in the Google Sheet. |
+| **Plan** | Commit to the week's gym days (Mon–Sun). Tap **＋ Gym** and the next workout in your split fills in; **🔒 Lock in** to commit. Whether you went is read off what you log on Train — ✅ done, ❌ missed (pick a reason: Work, Tired, Sick, Social, Travel, Sore, Other, plus a note), ⭐ bonus. Shows % of planned days hit, a weeks-on-plan streak, the last 8 weeks and your top miss reasons. Below that, a **gym-days heatmap** of the last 26 weeks, coloured by Push / Pull / Legs, with missed planned days outlined — plus sessions per week and your longest gap. Syncs to a **Plan** tab in the Google Sheet. |
 | **Program** | Your exercise list, editable. Add, rename, reorder, delete per day; set target sets, rep range, and the weight increment for each lift. Program start date lives here too. |
 | **Settings** | Edit all targets, set up Google Sheet sync, **export/import** a backup file, erase all data. |
 
@@ -95,6 +95,19 @@ later edits correct the sheet instead of duplicating rows.
 
 ---
 
+## Stalled lifts
+
+A lift is **stalled** when its last 3 sessions all failed to beat the best set before them. "Best" is the
+estimated one-rep max of the session's best set (weight × (1 + reps ÷ 30)), so adding weight and adding
+reps both count as progress. Stalled lifts get a card on the Train tab and a `⛔ stalled` badge while you
+log, each with one next step chosen from the pattern in your log:
+
+- **Earned the jump but never took it** → the weight to go up to.
+- **The weight jump is over 25% of the load** → widen the rep range or use smaller plates.
+- **Reps falling at the same weight** → a ~10% deload for one session.
+- **Trained less than every 10 days** → frequency is the fix.
+- Otherwise → change one variable for 3–4 weeks.
+
 ## Upper / Lower / Push / Pull / Legs
 
 **Program → Load Upper/Lower/PPL (shoulder focus)** swaps in a 5-day split with shoulder work on every
@@ -122,6 +135,7 @@ health-tracker/
 │   ├── calculations.js   Pure math: calories, weight projection, volume, workout stats
 │   ├── plan.js           Weekly planner logic: week dates, done/missed status, score, streak
 │   ├── plan-screen.js    The Plan screen
+│   ├── stalls.js         Stalled-lift detection and the next-step tip for each
 │   ├── progression.js    The coach's go-up / hold rule
 │   ├── sync.js           Session → sheet rows, offline queue, POST to Apps Script
 │   ├── charts.js         Hand-rolled SVG line/bar charts (zero dependencies)

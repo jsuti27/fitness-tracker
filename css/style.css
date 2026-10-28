@@ -443,3 +443,34 @@ button { cursor: pointer; font-family: inherit; }
 .wbar-fill { width: 100%; background: var(--training); border-radius: 8px 8px 0 0; }
 .wbar-fill.full { background: var(--brand); }
 .reasons { line-height: 2; }
+
+/* --- Stalled lifts --- */
+.badge-stall {
+  display: inline-block; font-size: .7rem; font-weight: 800; padding: 3px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--alert) 14%, transparent); color: var(--alert); white-space: nowrap;
+}
+.stall-line { font-size: .78rem; color: var(--ink-2); margin: 4px 0 6px; line-height: 1.5; }
+.stall-item { padding: 12px 0; border-top: 1px solid var(--line); }
+.stall-item:first-child { border-top: 0; padding-top: 0; }
+.stall-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.stall-tip { font-size: .86rem; margin-top: 6px; line-height: 1.45; }
+
+/* --- Heatmap (Plan) --- */
+.hm { --hm-gap: 2px; width: 100%; }
+.hm-months { display: grid; grid-template-columns: 14px repeat(26, minmax(0, 1fr)); gap: var(--hm-gap); font-size: .62rem; color: var(--muted); font-weight: 600; margin-bottom: 3px; }
+.hm-months::before { content: ""; }
+.hm-months span { white-space: nowrap; overflow: visible; }
+.hm-body { display: flex; gap: var(--hm-gap); }
+.hm-days { display: grid; grid-template-rows: repeat(7, 1fr); width: 14px; flex: none; font-size: .58rem; color: var(--muted); font-weight: 600; gap: var(--hm-gap); }
+.hm-days span { display: flex; align-items: center; }
+.hm-grid {
+  flex: 1; display: grid; grid-template-rows: repeat(7, auto); grid-auto-flow: column;
+  grid-template-columns: repeat(26, minmax(0, 1fr)); gap: var(--hm-gap); min-width: 0;
+}
+.hm-cell { aspect-ratio: 1; width: 100%; min-width: 0; padding: 0; border: 0; border-radius: 3px; background: var(--well); min-height: 0; }
+.hm-cell.future { opacity: .35; }
+.hm-cell.missed { box-shadow: inset 0 0 0 1.5px var(--alert); }
+.hm-cell.today { outline: 2px solid var(--ink); outline-offset: 1px; }
+.hm-detail { margin: 10px 0 6px; min-height: 1.2em; }
+.hm-summary { font-weight: 700; font-size: .9rem; margin: 10px 0 2px; }
+.dot-missed { background: transparent !important; box-shadow: inset 0 0 0 1.5px var(--alert); }
