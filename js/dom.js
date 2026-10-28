@@ -21,7 +21,10 @@ export function chartColors() {
 // chart and its legend dot — so a day reads as itself everywhere.
 export function dayColors(days) {
   const c = chartColors();
-  const palette = [c.training, c.nutrition, c.goal, c.body, c.activity];
+  // Red (goal) comes last: it's also the colour of "missed" and "stalled", so
+  // the third day (Legs in Push/Pull/Legs) gets teal rather than looking like
+  // a warning everywhere it appears.
+  const palette = [c.training, c.nutrition, c.body, c.activity, c.goal];
   return (days || []).map((_, i) => palette[i % palette.length]);
 }
 

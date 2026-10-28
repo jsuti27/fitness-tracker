@@ -7,7 +7,7 @@
 import {
   MISS_REASONS, WEEKDAYS, weekStart, weekSummary, sessionsByDate,
   commitmentStreak, recentWeeks, reasonTally, suggestDay,
-  heatmapWeeks, attendanceStats,
+  heatmapWeeks, attendanceStats, tileStats,
 } from './plan.js';
 import { todayISO, addDays, shortDate } from './calculations.js';
 import { $, flash, escapeAttr, escapeHtml, dayColors } from './dom.js';
@@ -103,7 +103,20 @@ export function createPlanScreen({ store, onPlanChange }) {
     }).join('');
 
     renderScore(plan, byDate, today, week);
+    renderTiles(sessions, today);
     renderHeatmap(sessions, plan, today, days, colorOf);
+  }
+
+  // Big numbers first: the one that answers "am I slacking?" leads.
+  function renderTiles(sessions, today) {
+    const t = tileStats(sessions, today);
+    const tile = (label, value, sub = '') =>
+      `<div class="tile"><div class="card-eyebrow">${label}</div><div class="tile-value">${value}${sub ? `<small>${sub}</small>` : ''}</div></div>`;
+    $('plan-tiles').innerHTML =
+      tile('Last 4 weeks', t.last4, ' / wk')
+      + tile('This month', t.thisMonth, ` day${t.thisMonth === 1 ? '' : 's'}`)
+      + tile('Gym days', t.days)
+      + tile('Lifted', t.lifted.toLocaleString('en-AU'), ' kg');
   }
 
   // Every gym day of the last 26 weeks at a glance, coloured by which day of

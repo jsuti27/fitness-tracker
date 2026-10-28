@@ -139,6 +139,7 @@ health-tracker/
 │   ├── progression.js    The coach's go-up / hold rule
 │   ├── sync.js           Session → sheet rows, offline queue, POST to Apps Script
 │   ├── charts.js         Hand-rolled SVG line/bar charts (zero dependencies)
+│   ├── chart-tip.js      Tap-to-read tooltips for those charts
 │   └── program.js        Seed Push/Pull/Legs templates + rep-range parsing
 ├── apps-script/          The Google Sheet script + its setup guide
 ├── manifest.webmanifest  PWA metadata

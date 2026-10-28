@@ -216,3 +216,25 @@ export function attendanceStats(sessions, today) {
     perDay,
   };
 }
+
+// The four headline numbers at the top of the Plan tab.
+//   last4     gym days per week over the last 28 days — the "am I slacking?" number
+//   thisMonth gym days so far this calendar month
+//   days      gym days since the first logged session
+//   lifted    kg moved: every logged set's weight x reps
+export function tileStats(sessions, today) {
+  const past = (sessions || []).filter(s => s.date && s.date <= today);
+  const days = new Set(past.map(s => s.date));
+  const from = addDays(today, -27);
+  const last4 = [...days].filter(d => d >= from).length;
+  let lifted = 0;
+  for (const s of past) for (const e of s.exercises || []) for (const set of e.sets || []) {
+    if (typeof set.weight === 'number' && typeof set.reps === 'number') lifted += set.weight * set.reps;
+  }
+  return {
+    last4: Math.round((last4 / 4) * 10) / 10,
+    thisMonth: [...days].filter(d => d.slice(0, 7) === today.slice(0, 7)).length,
+    days: days.size,
+    lifted: Math.round(lifted),
+  };
+}

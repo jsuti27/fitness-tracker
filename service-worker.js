@@ -17,6 +17,7 @@ const ASSETS = [
   './js/plan.js',
   './js/plan-screen.js',
   './js/stalls.js',
+  './js/chart-tip.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',

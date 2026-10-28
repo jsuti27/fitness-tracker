@@ -11,6 +11,30 @@ function scale(v, min, max, lo, hi) {
   return lo + ((v - min) / (max - min)) * (hi - lo);
 }
 
+// Gradient ids must be unique per document, and several charts can be on screen.
+let gradientSeq = 0;
+
+// 3-5 round-number gridline values spanning lo..hi (e.g. 900, 1000, 1100), so
+// a reading off the chart lands on a number a person would say out loud.
+export function niceTicks(lo, hi, target = 3) {
+  if (!(hi > lo)) return [lo];
+  const raw = (hi - lo) / target;
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+  let step = 10 * pow;
+  for (const m of [1, 2, 2.5, 5, 10]) if (raw <= m * pow) { step = m * pow; break; }
+  const out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(Math.round(v / step) * step || 0);
+  return out;
+}
+
+// Tap targets for chart-tip.js, carried on the <svg> so the chart functions
+// stay pure strings. Coordinates are in viewBox units.
+function tipData(points) {
+  return ` data-tips="${encodeURIComponent(JSON.stringify(points))}"`;
+}
+
+const kg = n => Math.round(n).toLocaleString('en-AU');
+
 function placeholder(width, height, textColor) {
   return `<svg viewBox="0 0 ${width} ${height}" class="chart" preserveAspectRatio="none"><text x="${width / 2}" y="${height / 2}" text-anchor="middle" dominant-baseline="middle" fill="${textColor}" font-size="13">No data yet</text></svg>`;
 }
@@ -104,7 +128,23 @@ export function groupedBarChartSVG(rows, {
     `<text x="${(PAD + ri * slot + slot / 2).toFixed(1)}" y="${height - 6}" text-anchor="middle" fill="${textColor}" font-size="10">W${row.week}</text>`
   ).join('');
 
-  return `<svg viewBox="0 0 ${width} ${height}" class="chart" preserveAspectRatio="none">${bars}${labels}</svg>`;
+  // Unlabelled on purpose: this chart stretches to fit, which would stretch
+  // any text too. The tooltip carries the exact numbers instead.
+  const grid = niceTicks(0, maxV, 3).filter(v => v > 0).map(v => {
+    const y = (height - PAD - scale(v, 0, maxV, 0, height - 2 * PAD - 12)).toFixed(1);
+    return `<line x1="${PAD}" y1="${y}" x2="${width - PAD}" y2="${y}" stroke="${textColor}" stroke-width="0.6" stroke-dasharray="2 4" opacity="0.5" vector-effect="non-scaling-stroke" />`;
+  }).join('');
+
+  const tips = rows.map((row, ri) => {
+    const top = Math.max(...series.map(k => row[k] || 0));
+    return {
+      x: PAD + ri * slot + slot / 2,
+      y: height - PAD - scale(top, 0, maxV, 0, height - 2 * PAD - 12),
+      tip: `Week ${row.week} · ` + series.map(k => `${k} ${kg(row[k] || 0)}`).join(' · ') + ' kg',
+    };
+  });
+
+  return `<svg viewBox="0 0 ${width} ${height}" class="chart" preserveAspectRatio="none"${tipData(tips)}>${grid}${bars}${labels}</svg>`;
 }
 
 // One lift's progress over time. Unlike the charts above this one is labelled —
@@ -115,7 +155,7 @@ export function groupedBarChartSVG(rows, {
 // their box, which also stretches any text inside them; a chart carrying axis
 // labels has to keep its proportions so the labels stay legible.
 //
-// points: [{ label: '19 Aug', value: 500 }]
+// points: [{ label: '19 Aug', value: 500, tip?: '19 Aug · best 50kg × 8 · 1,050kg work' }]
 export function progressionChartSVG(points, {
   width = 320, height = 172, color = '#6366f1', textColor = DEFAULT_TEXT,
   suffix = '', maxLabels = 4,
@@ -142,24 +182,36 @@ export function progressionChartSVG(points, {
     return `<circle cx="${px(i).toFixed(1)}" cy="${py(p.value).toFixed(1)}" r="${last ? 4 : 2.5}" fill="${color}"${last ? ' stroke="#fff" stroke-width="1.5"' : ''} />`;
   }).join('');
 
-  // Only the top and bottom of the range are labelled. Intermediate gridlines
-  // on a chart this small cost more in clutter than they return in precision.
-  const yLabels = [[hi, py(hi)], [lo, py(lo)]].map(([v, y]) =>
-    `<text x="${L - 6}" y="${(y + 3).toFixed(1)}" text-anchor="end" fill="${textColor}" font-size="10">${Math.round(v)}${suffix}</text>`
-  ).join('');
+  // Dashed gridlines on round numbers, so a value can be read off the chart.
+  const yLabels = niceTicks(minY, maxY, 3).map(v => {
+    const y = py(v).toFixed(1);
+    return `<line x1="${L}" y1="${y}" x2="${width - R}" y2="${y}" stroke="${textColor}" stroke-width="0.6" stroke-dasharray="2 4" opacity="0.5" />`
+      + `<text x="${L - 6}" y="${(+y + 3).toFixed(1)}" text-anchor="end" fill="${textColor}" font-size="10">${kg(v)}${suffix}</text>`;
+  }).join('');
 
   // Thin the date labels rather than overlap them — first and last always show.
   const step = Math.max(1, Math.ceil(points.length / maxLabels));
+  const n = points.length;
   const xLabels = points.map((p, i) => {
-    if (i !== 0 && i !== points.length - 1 && i % step !== 0) return '';
+    if (i !== 0 && i !== n - 1 && i % step !== 0) return '';
+    // A stepped label right next to the always-shown last one would overlap it.
+    if (i !== n - 1 && i !== 0 && n - 1 - i < step) return '';
     const anchor = i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle';
     return `<text x="${px(i).toFixed(1)}" y="${height - 10}" text-anchor="${anchor}" fill="${textColor}" font-size="10">${p.label}</text>`;
   }).join('');
 
   const baseline = `<line x1="${L}" y1="${height - B}" x2="${width - R}" y2="${height - B}" stroke="${textColor}" stroke-width="0.5" opacity="0.35" />`;
 
-  return `<svg viewBox="0 0 ${width} ${height}" class="chart chart-auto">`
-    + `<path d="${area}" fill="${color}" opacity="0.14" />`
+  const gid = `cg${++gradientSeq}`;
+  const tips = points.map((p, i) => ({
+    x: px(i), y: py(p.value), tip: p.tip || `${p.label} · ${kg(p.value)}${suffix}`,
+  }));
+
+  return `<svg viewBox="0 0 ${width} ${height}" class="chart chart-auto"${tipData(tips)}>`
+    + `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">`
+    + `<stop offset="0" stop-color="${color}" stop-opacity="0.32" /><stop offset="1" stop-color="${color}" stop-opacity="0" />`
+    + `</linearGradient></defs>`
+    + `<path d="${area}" fill="url(#${gid})" />`
     + baseline + yLabels + xLabels
     + `<path d="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" />`
     + dots

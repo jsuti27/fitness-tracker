@@ -6,6 +6,7 @@ import { createSync } from './sync.js';
 import { createProgramScreen } from './program-screen.js';
 import { createPlanScreen } from './plan-screen.js';
 import { stallFor } from './stalls.js';
+import { attachChartTip } from './chart-tip.js';
 import {
   todayISO, formatDate, shortDate, daysBetween,
   programWeek, sessionSetCount, exerciseProgression, bestSet, weeklyVolume,
@@ -343,6 +344,7 @@ function renderVolumeChart() {
     weeklyVolume(store.loadSessions(), days),
     { series: days, colors, textColor: chartColors().text }
   );
+  attachChartTip($('chart-volume'));
 
   $('volume-legend').innerHTML = days.map((d, i) =>
     `<span><i class="dot" style="background:${colors[i]}"></i>${escapeHtml(d)}</span>`
@@ -385,9 +387,14 @@ function renderProgressionChart() {
   // when you need to know whether it's still moving. This number rises if you
   // add weight or add reps, so a stall shows up as a stall and nothing else.
   $('chart-prog').innerHTML = progressionChartSVG(
-    prog.map(p => ({ label: shortDate(p.date), value: p.volume })),
+    prog.map(p => ({
+      label: shortDate(p.date),
+      value: p.volume,
+      tip: `${shortDate(p.date)} · best ${p.best.weight}kg × ${p.best.reps} · ${Math.round(p.volume).toLocaleString('en-AU')}kg work`,
+    })),
     { color: C.training, textColor: C.text, suffix: 'kg' }
   );
+  attachChartTip($('chart-prog'));
 
   if (prog.length === 0) {
     $('prog-history').innerHTML = `<div class="empty">No history for this lift yet.</div>`;
