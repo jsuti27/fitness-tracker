@@ -177,9 +177,14 @@ export function progressionChartSVG(points, {
     + ` L${px(points.length - 1).toFixed(1)},${height - B} Z`;
 
   // The newest session is the one you're deciding from, so it gets a bigger dot.
+  // Points flagged pr (a new best) get a ring, so you can see when you last
+  // actually improved.
   const dots = points.map((p, i) => {
     const last = i === points.length - 1;
-    return `<circle cx="${px(i).toFixed(1)}" cy="${py(p.value).toFixed(1)}" r="${last ? 4 : 2.5}" fill="${color}"${last ? ' stroke="#fff" stroke-width="1.5"' : ''} />`;
+    const ring = p.pr
+      ? `<circle cx="${px(i).toFixed(1)}" cy="${py(p.value).toFixed(1)}" r="6" fill="none" stroke="${color}" stroke-width="1.5" />`
+      : '';
+    return ring + `<circle cx="${px(i).toFixed(1)}" cy="${py(p.value).toFixed(1)}" r="${last ? 4 : 2.5}" fill="${color}"${last ? ' stroke="#fff" stroke-width="1.5"' : ''} />`;
   }).join('');
 
   // Dashed gridlines on round numbers, so a value can be read off the chart.

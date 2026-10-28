@@ -95,6 +95,16 @@ later edits correct the sheet instead of duplicating rows.
 
 ---
 
+## Train graphs
+
+- **Sets per muscle:** hard sets each muscle got this week (◀ ▶ for earlier weeks) against a shaded
+  10–20 set target zone; under 10 shows orange. A set counts 1 for the main muscle and 0.5 for helpers
+  (an incline press is chest 1, front delts 0.5, triceps 0.5). Muscles come from the exercise name via
+  the keyword rules in `js/muscles.js`; anything unmatched shows as "Other". Add a line there to teach it
+  a new exercise.
+- **Lift chart:** estimated max from each session's best set (weight × (1 + reps ÷ 30)), with every
+  new best ringed. Tap or drag to read a session.
+
 ## Stalled lifts
 
 A lift is **stalled** when its last 3 sessions all failed to beat the best set before them. "Best" is the
@@ -136,6 +146,7 @@ health-tracker/
 │   ├── plan.js           Weekly planner logic: week dates, done/missed status, score, streak
 │   ├── plan-screen.js    The Plan screen
 │   ├── stalls.js         Stalled-lift detection and the next-step tip for each
+│   ├── muscles.js        Exercise → muscle mapping and weekly hard sets per muscle
 │   ├── progression.js    The coach's go-up / hold rule
 │   ├── sync.js           Session → sheet rows, offline queue, POST to Apps Script
 │   ├── charts.js         Hand-rolled SVG line/bar charts (zero dependencies)

@@ -5,10 +5,11 @@ import { createRestTimer, restFor, formatRest } from './rest-timer.js';
 import { createSync } from './sync.js';
 import { createProgramScreen } from './program-screen.js';
 import { createPlanScreen } from './plan-screen.js';
-import { stallFor } from './stalls.js';
+import { stallFor, liftHistory } from './stalls.js';
+import { weeklyMuscleSets, weekOf, TARGET } from './muscles.js';
 import { attachChartTip } from './chart-tip.js';
 import {
-  todayISO, formatDate, shortDate, daysBetween,
+  todayISO, formatDate, shortDate, daysBetween, addDays,
   programWeek, sessionSetCount, exerciseProgression, bestSet, weeklyVolume,
 } from './calculations.js';
 import { lineChartSVG, groupedBarChartSVG, progressionChartSVG } from './charts.js';
@@ -336,19 +337,34 @@ function renderStalls() {
     : '<div class="empty">No stalled lifts 🎉 Everything set a new best recently.</div>';
 }
 
+// Hard sets per muscle for one week, against the 10-20 growth zone. Replaces
+// the kg-per-day bars: kilograms say nothing about balance (a heavy leg press
+// dwarfs a whole week of lateral raises), sets per muscle show the gaps.
+let muscleWeek = 0;
 function renderVolumeChart() {
-  const days = store.loadDayTypes();
-  const colors = dayColors(days);
+  const start = weekOf(todayISO(), muscleWeek);
+  const rows = weeklyMuscleSets(store.loadSessions(), start);
+  const scaleMax = Math.max(TARGET.high + 4, ...rows.map(r => r.sets));
+  const pct = v => `${(v / scaleMax) * 100}%`;
 
-  $('chart-volume').innerHTML = groupedBarChartSVG(
-    weeklyVolume(store.loadSessions(), days),
-    { series: days, colors, textColor: chartColors().text }
-  );
-  attachChartTip($('chart-volume'));
+  setText('ms-week', muscleWeek === 0 ? 'This week'
+    : `${shortDate(start)} – ${shortDate(addDays(start, 6))}`);
+  $('ms-next').disabled = muscleWeek >= 0;
 
-  $('volume-legend').innerHTML = days.map((d, i) =>
-    `<span><i class="dot" style="background:${colors[i]}"></i>${escapeHtml(d)}</span>`
-  ).join('');
+  $('muscle-sets').innerHTML = `
+    <div class="ms-rows" style="--zone-l:${pct(TARGET.low)};--zone-w:${pct(TARGET.high - TARGET.low)}">
+      ${rows.map(r => {
+        const cls = r.sets === 0 ? 'none' : r.sets < TARGET.low ? 'under' : r.sets > TARGET.high ? 'over' : 'ok';
+        const from = r.from.map(f => `${f.name} ${f.sets}`).join(' · ');
+        return `
+        <button type="button" class="ms-row" data-detail="${escapeAttr(`${r.muscle}: ${r.sets} sets${from ? ` — ${from}` : ''}`)}">
+          <span class="ms-name">${escapeHtml(r.muscle)}</span>
+          <span class="ms-track"><span class="ms-zone"></span><span class="ms-bar ${cls}" style="width:${pct(r.sets)}"></span></span>
+          <span class="ms-val">${r.sets || '–'}</span>
+        </button>`;
+      }).join('')}
+    </div>`;
+  setText('ms-detail', 'Tap a muscle to see which exercises counted.');
 }
 
 // Unique by name — an exercise repeated across days is one line on the chart.
@@ -382,18 +398,26 @@ function renderProgressionChart() {
   const prog = exerciseProgression(sessions, name, id || null);
   const C = chartColors();
 
+  // Strength curve: estimated max from each session's best set, the same
+  // number the stall check uses, with every new best marked.
+  let top = 0;
+  const strength = liftHistory(sessions, { id: id || null, name }).map(h => {
+    const best = h.sets.reduce((a, s) => (!a || s.weight * (1 + s.reps / 30) > a.weight * (1 + a.reps / 30) ? s : a), null);
+    const pr = h.best > top + 1e-6;
+    if (pr) top = h.best;
+    return {
+      label: shortDate(h.date),
+      value: Math.round(h.best * 10) / 10,
+      pr,
+      tip: `${shortDate(h.date)} · best ${best.weight}kg × ${best.reps} → est. max ${(Math.round(h.best * 10) / 10)}kg${pr ? ' · new best' : ''}`,
+    };
+  });
+
   // Work done — every set's weight x reps, per session. Top weight on its own
   // draws a flat line for as long as a lift sits at one load, which is exactly
   // when you need to know whether it's still moving. This number rises if you
   // add weight or add reps, so a stall shows up as a stall and nothing else.
-  $('chart-prog').innerHTML = progressionChartSVG(
-    prog.map(p => ({
-      label: shortDate(p.date),
-      value: p.volume,
-      tip: `${shortDate(p.date)} · best ${p.best.weight}kg × ${p.best.reps} · ${Math.round(p.volume).toLocaleString('en-AU')}kg work`,
-    })),
-    { color: C.training, textColor: C.text, suffix: 'kg' }
-  );
+  $('chart-prog').innerHTML = progressionChartSVG(strength, { color: C.training, textColor: C.text, suffix: 'kg' });
   attachChartTip($('chart-prog'));
 
   if (prog.length === 0) {
@@ -448,6 +472,13 @@ function renderRecentSessions() {
 }
 
 function wireTrain() {
+  $('ms-prev').addEventListener('click', () => { muscleWeek -= 1; renderVolumeChart(); });
+  $('ms-next').addEventListener('click', () => { if (muscleWeek < 0) { muscleWeek += 1; renderVolumeChart(); } });
+  $('muscle-sets').addEventListener('click', e => {
+    const row = e.target.closest('.ms-row');
+    if (row) setText('ms-detail', row.dataset.detail);
+  });
+
   // Delegated, because the day buttons are rebuilt whenever the split changes.
   $('day-picker').addEventListener('click', e => {
     const btn = e.target.closest('.day-btn');
