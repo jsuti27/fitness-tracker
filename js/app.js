@@ -4,6 +4,7 @@ import { lastEntriesFor, suggestion, describeGap } from './progression.js';
 import { createRestTimer, restFor, formatRest } from './rest-timer.js';
 import { createSync } from './sync.js';
 import { createProgramScreen } from './program-screen.js';
+import { createPlanScreen } from './plan-screen.js';
 import {
   todayISO, formatDate, shortDate, daysBetween,
   programWeek, sessionSetCount, exerciseProgression, bestSet, weeklyVolume,
@@ -34,6 +35,10 @@ const programScreen = createProgramScreen({
     flushProgramSoon();
   },
 });
+
+// The plan only stores intent; whether you went is read off logged sessions,
+// so the screen just re-renders and the sheet gets the change.
+const planScreen = createPlanScreen({ store, onPlanChange: () => flushProgramSoon() });
 
 // ============================================================ TRAIN
 function renderTrain() {
@@ -548,6 +553,7 @@ function wireNav() {
       $(tab.dataset.screen).classList.add('active');
       setText('screen-title', tab.dataset.title);
       if (tab.dataset.screen === 'train') renderTrain();
+      if (tab.dataset.screen === 'plan') planScreen.render();
       if (tab.dataset.screen === 'program') programScreen.render();
       if (tab.dataset.screen === 'settings') renderSettings();
     });
@@ -559,6 +565,7 @@ wireTheme();
 wireTrain();
 wireRestBar();
 programScreen.wire();
+planScreen.wire();
 wireSettings();
 wireNav();
 // Train is the screen the app opens on, so it has to render itself at start —

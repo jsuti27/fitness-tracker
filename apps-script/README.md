@@ -137,3 +137,38 @@ the app, not here.
 it. If you ever rebuild your program from this tab, keeping the ids identical is
 what keeps each exercise attached to its past sessions — change one and that
 exercise's history is orphaned.
+
+---
+
+## The Plan tab (weekly planner)
+
+The app's **Plan** screen sends your weekly commitments to a third tab called
+**Plan**: one row for each day you planned, plus any bonus days you trained
+without planning.
+
+| Column | What it is |
+|---|---|
+| Week of | The Monday of that week |
+| Date / Weekday | The day itself |
+| Planned | The workout you committed to (Upper, Push, …) |
+| Logged | What you actually logged that day, if anything |
+| Status | `done`, `missed`, `today`, `planned` or `bonus` |
+| Reason | For missed days: Work, Tired, Sick, Social, Travel, Sore or Other |
+| Note | Anything you typed about why |
+
+Like the Program tab, it is **rewritten whole** on every change, so edit your
+plan in the app, not in the sheet.
+
+### Updating an existing setup (do this once)
+
+If sync is already working, you only need to swap in the new script:
+
+1. Open the Gym Log sheet → **Extensions → Apps Script**.
+2. Before deleting anything, **copy your `SECRET` line** (`var SECRET = '...'`).
+3. Select everything, delete it, and paste in the new `Code.gs` from this folder.
+4. Put your `SECRET` line back exactly as it was. Save (💾).
+5. **Deploy → Manage deployments → ✏️ (edit) → Version: New version → Deploy.**
+   The URL stays the same, so there's nothing to change in the app.
+
+Until you do this, everything else keeps syncing as normal. Settings will show
+*"Plan not saved — update the Apps Script"* until the new script is live.

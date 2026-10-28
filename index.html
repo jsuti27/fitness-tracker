@@ -59,6 +59,25 @@
       </div>
     </section>
 
+    <!-- ============ PLAN ============ -->
+    <section id="plan" class="screen">
+      <div class="card training">
+        <div class="week-nav">
+          <button type="button" class="pe-btn" id="plan-prev" aria-label="Previous week">◀</button>
+          <button type="button" class="week-title" id="plan-today" title="Back to this week">
+            <span id="plan-week-label">This week</span>
+            <span class="subtle" id="plan-week-range"></span>
+          </button>
+          <button type="button" class="pe-btn" id="plan-next" aria-label="Next week">▶</button>
+        </div>
+        <div id="plan-days"></div>
+        <div class="plan-lock" id="plan-lock"></div>
+        <p id="plan-note" class="note"></p>
+      </div>
+
+      <div class="card" id="plan-score"></div>
+    </section>
+
     <!-- ============ PROGRAM ============ -->
     <section id="program" class="screen">
       <div class="card training">
@@ -91,6 +110,13 @@
         <button type="submit" class="primary">Add to <span id="ax-day">Push</span></button>
         <p id="add-note" class="note"></p>
       </form>
+
+      <div class="card">
+        <h2>Upper / Lower / Push / Pull / Legs</h2>
+        <p class="subtle">5-day split with shoulder work on every upper-body day. Lifts you already do keep their history; Push, Pull and Legs keep their logged sessions.</p>
+        <button type="button" id="ulppl-btn" class="primary">Load Upper/Lower/PPL (shoulder focus)</button>
+        <p id="ulppl-note" class="note"></p>
+      </div>
 
       <div class="card">
         <h2>Load a program</h2>
@@ -147,12 +173,13 @@
         <p id="reset-note" class="note"></p>
       </div>
 
-      <p class="subtle center foot">Gym Log · <span id="app-version">health-tracker-v17</span> · on-device</p>
+      <p class="subtle center foot">Gym Log · <span id="app-version">health-tracker-v18</span> · on-device</p>
     </section>
   </main>
 
   <nav class="tabbar">
     <button class="tab active" data-screen="train" data-title="Train"><span class="icn">🏋️</span><span>Train</span></button>
+    <button class="tab" data-screen="plan" data-title="Plan"><span class="icn">📅</span><span>Plan</span></button>
     <button class="tab" data-screen="program" data-title="Program"><span class="icn">📋</span><span>Program</span></button>
     <button class="tab" data-screen="settings" data-title="Settings"><span class="icn">⚙️</span><span>Settings</span></button>
   </nav>

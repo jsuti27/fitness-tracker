@@ -46,6 +46,54 @@ export const DEFAULT_PROGRAM = {
   ],
 };
 
+// Upper / Lower / Push / Pull / Legs with a shoulder focus: delts get direct
+// work on every upper-body day (~22 sets a week), and lead the session on
+// Upper and Push while you're fresh. Names match the lifts already in use, so
+// loading this keeps each one's id and therefore its history (see
+// storage.importProgram). Push, Pull and Legs keep their names for the same
+// reason — logged sessions are filed under the day name.
+export const ULPPL_DAY_TYPES = ['Upper', 'Lower', 'Push', 'Pull', 'Legs'];
+export const ULPPL_PROGRAM = {
+  Upper: [
+    { name: 'Machine Shoulder Press', targetSets: 3, repRange: '8-12', increment: 5 },
+    { name: 'Lat Pulldown', targetSets: 3, repRange: '8-12', increment: 5 },
+    { name: 'Incline press - Dumbbell', targetSets: 3, repRange: '6-10', increment: 2.5 },
+    { name: 'Machine Row', targetSets: 3, repRange: '8-12', increment: 2.5 },
+    { name: 'Cable Lateral Raise', targetSets: 3, repRange: '12-20', increment: 2.5 },
+    { name: 'Delt fly', targetSets: 3, repRange: '10-15', increment: 2.5 },
+  ],
+  Lower: [
+    { name: 'BB RDL', targetSets: 3, repRange: '8-12', increment: 2.5 },
+    { name: 'BB Hip Thrust', targetSets: 3, repRange: '8-10', increment: 2.5 },
+    { name: 'Leg Press', targetSets: 3, repRange: '8-10', increment: 5 },
+    { name: 'Seated Leg Curl', targetSets: 3, repRange: '10-12', increment: 5 },
+    { name: 'Seated Calf Raise', targetSets: 3, repRange: '10-15', increment: 2.5 },
+  ],
+  Push: [
+    { name: 'DB shoulder Press', targetSets: 3, repRange: '8-12', increment: 2.5 },
+    { name: 'Incline press - Dumbbell', targetSets: 3, repRange: '6-10', increment: 2.5 },
+    { name: 'Horizontal Press (Machine/Plate)', targetSets: 3, repRange: '8-12', increment: 5 },
+    { name: 'Lateral raise', targetSets: 4, repRange: '12-20', increment: 2.5 },
+    { name: 'Pec Fly Machine', targetSets: 3, repRange: '10-15', increment: 2.5 },
+    { name: 'Tricep Extension (Rope)', targetSets: 3, repRange: '10-12', increment: 2.5 },
+  ],
+  Pull: [
+    { name: 'Lat Pulldown', targetSets: 3, repRange: '8-12', increment: 5 },
+    { name: 'Seated Cable Row', targetSets: 3, repRange: '8-12', increment: 2.5 },
+    { name: 'Face Pull', targetSets: 3, repRange: '12-20', increment: 2.5 },
+    { name: 'Delt fly', targetSets: 3, repRange: '10-15', increment: 2.5 },
+    { name: 'Barbell Preacher Curl', targetSets: 3, repRange: '10-12', increment: 2.5 },
+    { name: 'Hammer curls', targetSets: 3, repRange: '8-12', increment: 2.5 },
+  ],
+  Legs: [
+    { name: 'Leg Press', targetSets: 3, repRange: '8-10', increment: 5 },
+    { name: 'Leg Extension', targetSets: 3, repRange: '8-12', increment: 5 },
+    { name: 'Seated Leg Curl', targetSets: 3, repRange: '10-12', increment: 5 },
+    { name: 'Hip abductors', targetSets: 3, repRange: '10-15', increment: 2.5 },
+    { name: 'Seated Calf Raise', targetSets: 3, repRange: '10-15', increment: 2.5 },
+  ],
+};
+
 // The day types a program is split into. Editable — a Push/Pull/Legs split and
 // an Upper/Lower split are the same shape, just different day names, so the app
 // should never dictate which one you run.

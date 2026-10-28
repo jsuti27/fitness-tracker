@@ -17,6 +17,9 @@ const KEYS = {
   dayTypes: 'ht.dayTypes',
   programDirty: 'ht.programDirty',
   rest: 'ht.rest',
+  plan: 'ht.plan',
+  planLocks: 'ht.planLocks',
+  planDirty: 'ht.planDirty',
 };
 
 // A session is identified by the day it was done and which day type it was.
@@ -211,6 +214,51 @@ export function createStorage(backend) {
       return this.loadSessions();
     },
 
+    // --- Weekly plan ---
+    // Keyed by date: { day, reason, note }. A date with no entry is a rest day.
+    loadPlan() {
+      const raw = backend.getItem(KEYS.plan);
+      return raw ? JSON.parse(raw) : {};
+    },
+    savePlan(plan) {
+      backend.setItem(KEYS.plan, JSON.stringify(plan));
+      backend.setItem(KEYS.planDirty, '1');
+    },
+    // Merge into one date's entry. A patch with day: null clears the plan for
+    // that date but keeps nothing else — an unplanned day has no miss reason.
+    updatePlanDay(date, patch) {
+      const plan = this.loadPlan();
+      if (patch.day === null) delete plan[date];
+      else plan[date] = { ...(plan[date] || {}), ...patch };
+      this.savePlan(plan);
+      return plan;
+    },
+    // Week start date -> { lockedAt, unlocks }. Unlocks are counted rather
+    // than forgotten, so walking back a commitment stays visible.
+    loadPlanLocks() {
+      const raw = backend.getItem(KEYS.planLocks);
+      return raw ? JSON.parse(raw) : {};
+    },
+    savePlanLocks(locks) {
+      backend.setItem(KEYS.planLocks, JSON.stringify(locks));
+      backend.setItem(KEYS.planDirty, '1');
+    },
+    setWeekLocked(weekStart, locked) {
+      const locks = this.loadPlanLocks();
+      const prev = locks[weekStart] || { lockedAt: null, unlocks: 0 };
+      locks[weekStart] = locked
+        ? { ...prev, lockedAt: new Date().toISOString() }
+        : { ...prev, lockedAt: null, unlocks: prev.lockedAt ? prev.unlocks + 1 : prev.unlocks };
+      this.savePlanLocks(locks);
+      return locks;
+    },
+    loadPlanDirty() {
+      return backend.getItem(KEYS.planDirty) === '1';
+    },
+    clearPlanDirty() {
+      backend.setItem(KEYS.planDirty, '');
+    },
+
     // --- Rest timer ---
     // Only the moment the rest ends, so closing the app mid-set and reopening
     // resumes the same countdown. Deliberately outside the export/import
@@ -305,8 +353,26 @@ export function createStorage(backend) {
         : Object.keys(data.program);
       if (!days.length) return { ok: false, error: 'That program has no training days in it.' };
 
-      // seedProgram fills in the stable ids and default increments.
-      this.saveProgram(seedProgram(data.program, days));
+      // Reuse the id of any lift already in the program (matched by name), so
+      // its logged history stays attached. A lift listed on two days shares
+      // one id too, so its "last time" carries across the split.
+      const ids = new Map();
+      const key = name => String(name || '').trim().toLowerCase();
+      const current = this.loadProgram();
+      Object.values(current).forEach(list => (list || []).forEach(ex => {
+        if (ex.id && !ids.has(key(ex.name))) ids.set(key(ex.name), ex.id);
+      }));
+      const withIds = {};
+      for (const day of days) {
+        withIds[day] = (data.program[day] || []).map(ex => {
+          const id = ex.id || ids.get(key(ex.name)) || newExerciseId();
+          ids.set(key(ex.name), id);
+          return { ...ex, id };
+        });
+      }
+
+      // seedProgram fills in default increments for anything still missing.
+      this.saveProgram(seedProgram(withIds, days));
       this.saveDayTypes(days);
       return { ok: true, days: days.length };
     },
@@ -321,6 +387,8 @@ export function createStorage(backend) {
           workoutStart: this.loadWorkoutStart(),
           dayTypes: this.loadDayTypes(),
           sessions: this.loadSessions(),
+          plan: this.loadPlan(),
+          planLocks: this.loadPlanLocks(),
           syncSettings: this.loadSyncSettings(),
         },
         null,
@@ -344,6 +412,8 @@ export function createStorage(backend) {
       if (Array.isArray(data.sessions)) this.saveSessions(data.sessions);
       if (Array.isArray(data.dayTypes) && data.dayTypes.length) this.saveDayTypes(data.dayTypes);
       if (typeof data.workoutStart === 'string') this.saveWorkoutStart(data.workoutStart);
+      if (data.plan && typeof data.plan === 'object') this.savePlan(data.plan);
+      if (data.planLocks && typeof data.planLocks === 'object') this.savePlanLocks(data.planLocks);
       if (data.syncSettings && typeof data.syncSettings === 'object') {
         this.saveSyncSettings(data.syncSettings);
       }

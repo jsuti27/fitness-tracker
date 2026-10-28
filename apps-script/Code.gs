@@ -22,6 +22,11 @@ var HEADERS = ['Date', 'Week', 'Day', 'Exercise', 'Set', 'Kg', 'Reps', 'In range
 var PROGRAM_SHEET_NAME = 'Program';
 var PROGRAM_HEADERS = ['Day', 'Order', 'Exercise', 'Target Sets', 'Rep Range', 'Increment', 'Exercise ID'];
 
+// The weekly planner: which days you committed to, whether you went, and why
+// not when you didn't. Rewritten whole on each change, like the Program tab.
+var PLAN_SHEET_NAME = 'Plan';
+var PLAN_HEADERS = ['Week of', 'Date', 'Weekday', 'Planned', 'Logged', 'Status', 'Reason', 'Note'];
+
 function doPost(e) {
   // Two syncs firing at once (the app autosaves as you type, so a flush can
   // overlap the previous one) would both build the index before either wrote,
@@ -47,6 +52,9 @@ function doPost(e) {
     // second exit path, and a program write is rare enough not to matter.
     if (payload.kind === 'program') {
       return writeProgram(payload.rows || []);
+    }
+    if (payload.kind === 'plan') {
+      return writePlan(payload.planRows || []);
     }
 
     var sheet = getSheet();
@@ -177,6 +185,33 @@ function writeProgram(rows) {
   }
 
   return json({ ok: true, program: rows.length });
+}
+
+/**
+ * Replaces the Plan tab wholesale. Status (done / missed / bonus...) is worked
+ * out on the phone from your logged sessions, so this only writes what it's
+ * given. Hand-edits to this tab are lost on the next plan change in the app.
+ */
+function writePlan(rows) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(PLAN_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(PLAN_SHEET_NAME);
+  }
+
+  sheet.clear();
+  sheet.appendRow(PLAN_HEADERS);
+  sheet.getRange(1, 1, 1, PLAN_HEADERS.length).setFontWeight('bold');
+  sheet.setFrozenRows(1);
+
+  if (rows.length) {
+    var values = rows.map(function (r) {
+      return [r.weekOf, r.date, r.weekday, r.planned, r.logged, r.status, r.reason, r.note];
+    });
+    sheet.getRange(2, 1, values.length, PLAN_HEADERS.length).setValues(values);
+  }
+
+  return json({ ok: true, plan: rows.length });
 }
 
 /** Lets you check the deployment is live by opening the URL in a browser. */
