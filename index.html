@@ -40,9 +40,14 @@
       </div>
 
       <div class="card">
-        <div class="chart-head"><h2>Weekly volume</h2><span class="subtle">kg lifted</span></div>
-        <div id="chart-volume" class="chart-wrap"></div>
-        <div class="legend" id="volume-legend"></div>
+        <div class="chart-head"><h2>Sets per muscle</h2><span class="subtle">target 10–20 hard sets / week</span></div>
+        <div class="week-nav small-nav">
+          <button type="button" class="pe-btn" id="ms-prev" aria-label="Previous week">◀</button>
+          <span class="week-title" id="ms-week">This week</span>
+          <button type="button" class="pe-btn" id="ms-next" aria-label="Next week">▶</button>
+        </div>
+        <div id="muscle-sets"></div>
+        <p class="subtle hm-detail" id="ms-detail">Tap a muscle to see which exercises counted.</p>
       </div>
 
       <div class="card" id="stalls-card">
@@ -53,7 +58,7 @@
       <div class="card">
         <h2>Progression</h2>
         <select id="prog-select" class="select"></select>
-        <p class="chart-label">Work per session — every set's weight × reps</p>
+        <p class="chart-label">Estimated max — best set's weight × (1 + reps ÷ 30). Ringed dots = new best.</p>
         <div id="chart-prog" class="chart-wrap"></div>
         <div id="prog-history" class="prog-history"></div>
       </div>
@@ -182,7 +187,7 @@
         <p id="reset-note" class="note"></p>
       </div>
 
-      <p class="subtle center foot">Gym Log · <span id="app-version">health-tracker-v20</span> · on-device</p>
+      <p class="subtle center foot">Gym Log · <span id="app-version">health-tracker-v21</span> · on-device</p>
     </section>
   </main>
 
